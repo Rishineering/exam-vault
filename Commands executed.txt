@@ -1,0 +1,274 @@
+===============================================================================
+ ExamVault - Commands executed
+ Project: C:\Users\anand\Documents\Default Project
+ Platform: Windows 10/11 (PowerShell), Android target
+===============================================================================
+
+NOTE
+----
+Every Flutter/Dart/Android command was run after loading the user-local
+toolchain environment:
+
+    Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
+    . C:\Users\anand\dev\env.ps1
+
+C:\Users\anand\dev\env.ps1 sets:
+    JAVA_HOME        = C:\Users\anand\dev\jdk17
+    FLUTTER_ROOT     = C:\Users\anand\dev\flutter
+    ANDROID_HOME     = %LOCALAPPDATA%\Android\Sdk
+    ANDROID_SDK_ROOT = %LOCALAPPDATA%\Android\Sdk
+    PATH             = JDK\bin; Flutter\bin; SDK\platform-tools;
+                       SDK\cmdline-tools\latest\bin; existing PATH
+
+All work was done without administrator rights.
+
+===============================================================================
+ 1. TOOLCHAIN INSTALLATION (user-local)
+===============================================================================
+
+# Create the tool directories
+New-Item -ItemType Directory -Force C:\Users\anand\dev
+New-Item -ItemType Directory -Force C:\Users\anand\dev\staging
+
+# JDK 17 (Eclipse Temurin)
+Invoke-WebRequest -Uri "https://api.adoptium.net/v3/binary/latest/17/ga/windows/x64/jdk/hotspot/normal/eclipse?project=jdk" -OutFile "$env:TEMP\jdk17.zip"
+Expand-Archive -Path "$env:TEMP\jdk17.zip" -DestinationPath C:\Users\anand\dev -Force
+Rename-Item C:\Users\anand\dev\jdk-17* C:\Users\anand\dev\jdk17
+
+# Flutter SDK (stable, 3.47.9)
+Invoke-WebRequest -Uri "https://storage.googleapis.com/flutter_infra_release/releases/stable/windows/flutter_windows_3.47.9-stable.zip" -OutFile "$env:TEMP\flutter.zip"
+Expand-Archive -Path "$env:TEMP\flutter.zip" -DestinationPath C:\Users\anand\dev -Force
+
+# Android command-line tools
+Invoke-WebRequest -Uri "https://dl.google.com/android/repository/commandlinetools-win-13114758_latest.zip" -OutFile "$env:TEMP\cmdline-tools.zip"
+Expand-Archive -Path "$env:TEMP\cmdline-tools.zip" -DestinationPath "$env:LOCALAPPDATA\Android\Sdk\cmdline-tools" -Force
+
+# Accept SDK licenses and install Android components
+sdkmanager --sdk_root="$env:LOCALAPPDATA\Android\Sdk" --licenses
+sdkmanager --sdk_root="$env:LOCALAPPDATA\Android\Sdk" "platform-tools" "platforms;android-36" "build-tools;36.0.0" "cmdline-tools;latest"
+sdkmanager --sdk_root="$env:LOCALAPPDATA\Android\Sdk" "ndk;28.2.13676358" "cmake;3.22.1"
+
+# Verify the toolchain
+flutter --version
+flutter doctor -v
+flutter doctor --android-licenses
+
+===============================================================================
+ 2. PROJECT CREATION
+===============================================================================
+
+# Scaffold a Flutter Android project
+flutter create --org com.examvault --project-name exam_vault C:\Users\anand\dev\exam_vault_app
+
+# Copy the scaffold into the working project folder
+Copy-Item -Path C:\Users\anand\dev\exam_vault_app\* -Destination "C:\Users\anand\Documents\Default Project" -Recurse -Force
+
+# Staging copies of core/test files kept for reference
+New-Item -ItemType Directory -Force C:\Users\anand\dev\staging
+Copy-Item -Path "C:\Users\anand\Documents\Default Project\lib\core\*" -Destination C:\Users\anand\dev\staging -Recurse -Force
+Copy-Item -Path "C:\Users\anand\Documents\Default Project\test\*" -Destination C:\Users\anand\dev\staging -Recurse -Force
+
+===============================================================================
+ 3. DEPENDENCIES
+===============================================================================
+
+flutter pub add file_picker sqflite path path_provider syncfusion_flutter_pdf pdfx google_mlkit_text_recognition share_plus intl
+flutter pub get
+
+# Installed versions
+#   file_picker                        13.3.2
+#   sqflite                            2.4.5+1
+#   path                               1.9.1
+#   path_provider                      2.1.6
+#   syncfusion_flutter_pdf             35.1.43
+#   pdfx                               2.11.0
+#   google_mlkit_text_recognition      1.0.1
+#   share_plus                         13.3.1
+#   intl                               0.20.3
+
+===============================================================================
+ 4. DEVELOPMENT AND VERIFICATION
+===============================================================================
+
+# Inspect the project tree
+Get-ChildItem -Recurse -File -Path "lib","test" | Select-Object -ExpandProperty FullName
+Get-Content pubspec.yaml
+
+# Static analysis
+flutter analyze
+
+# Unit / widget tests
+flutter test
+flutter test test/question_parser_test.dart
+flutter test test/widget_test.dart
+
+# Temporary PDF coordinate probe (created, run, then removed)
+flutter test test/pdf_probe_test.dart
+Remove-Item "test\pdf_probe_test.dart" -Force
+
+# Temporary parser debug script (created, run, then removed)
+& "$env:FLUTTER_ROOT\bin\cache\dart-sdk\bin\dart.exe" run tool/debug.dart
+Remove-Item "tool\debug.dart" -Force
+
+# NOTE: the `dart` wrapper in flutter\bin fails without git in this
+# environment ("Unable to determine engine version"), so pure-Dart scripts
+# were run with the SDK binary above.
+
+# Inspect plugin APIs before wiring them up
+Get-Content "$env:LOCALAPPDATA\Pub\Cache\hosted\pub.dev\file_picker-13.3.2\lib\src\file_picker.dart"
+Get-Content "$env:LOCALAPPDATA\Pub\Cache\hosted\pub.dev\pdfx-2.11.0\lib\src\renderer\interfaces\page_image.dart"
+Get-Content "$env:LOCALAPPDATA\Pub\Cache\hosted\pub.dev\google_mlkit_text_recognition-1.0.1\android\build.gradle"
+Get-Content "$env:LOCALAPPDATA\Pub\Cache\hosted\pub.dev\syncfusion_flutter_pdf-35.1.43\lib\src\pdf\implementation\exporting\pdf_text_extractor\text_line.dart"
+
+# Service-level and end-to-end tests added later
+flutter test test/services_test.dart
+flutter test test/sample_integration_test.dart
+flutter analyze
+flutter test
+
+===============================================================================
+ 5. ANDROID CONFIGURATION
+===============================================================================
+
+# App label changed to "ExamVault" in
+#   android/app/src/main/AndroidManifest.xml
+# minSdk is 24 (flutter.minSdkVersion); ML Kit requires >= 21.
+# compileSdk/targetSdk are 36 (flutter.compileSdkVersion/targetSdkVersion).
+
+# Gradle heap reduced for a low-memory machine (6 GB RAM) in
+#   android/gradle.properties
+#     org.gradle.jvmargs=-Xmx2G -XX:MaxMetaspaceSize=768m ...
+#     org.gradle.workers.max=2
+
+# R8 keep rules added in
+#   android/app/proguard-rules.pro
+# to suppress ML Kit optional-script missing classes and keep the plugin:
+#     -dontwarn com.google.mlkit.vision.text.chinese.**
+#     -dontwarn com.google.mlkit.vision.text.devanagari.**
+#     -dontwarn com.google.mlkit.vision.text.japanese.**
+#     -dontwarn com.google.mlkit.vision.text.korean.**
+#     -keep class com.google.mlkit.vision.text.** { *; }
+#     -keep class com.google_mlkit_text_recognition.** { *; }
+#
+# android/app/build.gradle.kts release block now passes:
+#     proguardFiles(
+#         getDefaultProguardFile("proguard-android-optimize.txt"),
+#         "proguard-rules.pro",
+#     )
+
+===============================================================================
+ 6. RELEASE BUILDS
+===============================================================================
+
+# First attempt: Gradle stalled at AAPT2 after ~30 min because the template
+# requested an 8 GB heap on a 6 GB machine. Timed out, no APK.
+flutter build apk --release
+
+# Inspect Gradle daemon state / stop stale daemons
+Push-Location android
+.\gradlew.bat --stop
+Pop-Location
+Get-Process java -ErrorAction SilentlyContinue | Stop-Process -Force
+
+# Second attempt: build reached R8 and failed on ML Kit optional classes.
+flutter build apk --release
+
+# Read the generated R8 missing rules
+Get-Content "build\app\outputs\mapping\release\missing_rules.txt"
+
+# Added android/app/proguard-rules.pro and the release proguardFiles config,
+# then rebuilt successfully.
+flutter build apk --release
+#   -> build\app\outputs\flutter-apk\app-release.apk  (83.1 MB)
+
+# A final rebuild was done after the last Dart robustness fixes.
+flutter build apk --release
+#   -> build\app\outputs\flutter-apk\app-release.apk  (83.1 MB)
+
+# Inspect the packaged manifest
+$aapt = Get-ChildItem "$env:ANDROID_HOME\build-tools" -Recurse -Filter aapt.exe | Sort-Object FullName -Descending | Select-Object -First 1
+& $aapt.FullName dump badging "build\app\outputs\flutter-apk\app-release.apk"
+
+# Copy the APK to a convenient location and record its hash
+Copy-Item "build\app\outputs\flutter-apk\app-release.apk" "C:\Users\anand\Documents\Default Project\ExamVault-release.apk" -Force
+Get-FileHash "C:\Users\anand\Documents\Default Project\ExamVault-release.apk" -Algorithm SHA256
+
+# Final verification
+flutter analyze
+flutter test
+
+===============================================================================
+ 7. ARTIFACT
+===============================================================================
+
+APK (build output):
+  C:\Users\anand\Documents\Default Project\build\app\outputs\flutter-apk\app-release.apk
+
+APK (convenience copy):
+  C:\Users\anand\Documents\Default Project\ExamVault-release.apk
+
+Size:    87,138,952 bytes (~83.1 MB)
+SHA256:  42C921112C7F80041D4C4BFA2E70F59C62EE5E167F6171DF33CF37AA6B58A61B
+Package: com.examvault.exam_vault
+Label:   ExamVault
+minSdk:  24
+target:  36
+
+Verification results:
+  flutter analyze  -> No issues found
+  flutter test     -> 24 tests passed
+
+===============================================================================
+ 8. SOURCE FILES CREATED / MODIFIED
+===============================================================================
+
+Core extraction engine (pure Dart, unit-tested):
+  lib/core/models.dart
+  lib/core/text/normalize.dart
+  lib/core/parsing/patterns.dart
+  lib/core/parsing/metadata_parser.dart
+  lib/core/parsing/question_parser.dart
+  lib/core/layout/layout_processor.dart
+  lib/core/extraction/raw_document_builder.dart
+  lib/core/extraction/extraction_quality.dart
+
+Services:
+  lib/services/pdf_text_extractor.dart
+  lib/services/ocr_extractor.dart
+  lib/services/document_reader.dart
+  lib/services/export_service.dart
+
+Data layer:
+  lib/data/models.dart
+  lib/data/app_database.dart
+  lib/data/paper_repository.dart
+
+State / app shell:
+  lib/state/app_state.dart
+  lib/app.dart
+  lib/main.dart
+
+UI:
+  lib/ui/home_screen.dart
+  lib/ui/import_screen.dart
+  lib/ui/paper_screen.dart
+  lib/ui/question_table.dart
+  lib/ui/question_edit_sheet.dart
+  lib/ui/settings_screen.dart
+
+Tests:
+  test/question_parser_test.dart   (15 parser/layout/OCR tests)
+  test/services_test.dart          (6 decode/CSV tests)
+  test/sample_integration_test.dart (1 end-to-end sample paper test)
+  test/widget_test.dart            (2 question-table widget tests)
+
+Sample input:
+  sample_exam_paper.txt
+
+Documentation:
+  README.md
+  Commands executed.txt
+
+===============================================================================
+ END OF LOG
+===============================================================================
