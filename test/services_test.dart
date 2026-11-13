@@ -63,6 +63,7 @@ void main() {
         ParsedOption(label: 'B', text: '1003'),
       ],
       pageNumber: 1,
+      category: '',
       confidence: 0.9,
       needsReview: false,
       warnings: const [],

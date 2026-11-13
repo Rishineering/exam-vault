@@ -78,6 +78,7 @@ class StoredQuestion {
     required this.section,
     required this.options,
     required this.pageNumber,
+    required this.category,
     required this.confidence,
     required this.needsReview,
     required this.warnings,
@@ -94,6 +95,7 @@ class StoredQuestion {
   final double? marks;
   final List<ParsedOption> options;
   final int pageNumber;
+  final String category;
   final double confidence;
   final bool needsReview;
   final List<String> warnings;
@@ -123,6 +125,7 @@ class StoredQuestion {
     bool clearMarks = false,
     List<ParsedOption>? options,
     int? pageNumber,
+    String? category,
     double? confidence,
     bool? needsReview,
     List<String>? warnings,
@@ -138,6 +141,7 @@ class StoredQuestion {
       marks: clearMarks ? null : (marks ?? this.marks),
       options: options ?? this.options,
       pageNumber: pageNumber ?? this.pageNumber,
+      category: category ?? this.category,
       confidence: confidence ?? this.confidence,
       needsReview: needsReview ?? this.needsReview,
       warnings: warnings ?? this.warnings,

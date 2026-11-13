@@ -99,6 +99,48 @@ class AppState extends ChangeNotifier {
     await exporter.shareCsv(detail);
   }
 
+  /// Default categories shown on the home screen.
+  static const List<String> homeCategories = [
+    'History',
+    'Geography',
+    'Social Science',
+    'Maths',
+  ];
+
+  /// Returns the top questions for each home category.
+  ///
+  /// [perCategory] is used for the first three categories and [mathsLimit] for
+  /// Maths, so the default call yields 10 questions (3 + 3 + 3 + 1).
+  Future<Map<String, List<StoredQuestion>>> getTopQuestionsByCategory({
+    int perCategory = 3,
+    int mathsLimit = 1,
+  }) async {
+    final result = <String, List<StoredQuestion>>{};
+    for (final category in homeCategories) {
+      final limit = category == 'Maths' ? mathsLimit : perCategory;
+      result[category] = await _repository.getQuestionsByCategory(
+        category,
+        limit: limit,
+      );
+    }
+    return result;
+  }
+
+  /// Returns true if the user has completed onboarding / login at least once.
+  Future<bool> isOnboardingComplete() async {
+    final value = await _repository.getSetting('onboarding_complete');
+    return value == '1';
+  }
+
+  /// Marks onboarding / login as completed so the welcome/login screens are
+  /// skipped on subsequent launches.
+  Future<void> setOnboardingComplete() async {
+    await _repository.setSetting('onboarding_complete', '1');
+  }
+
+  /// Returns every distinct category currently stored in the database.
+  Future<List<String>> getStoredCategories() => _repository.getCategories();
+
   Future<String> writeCsv(PaperDetail detail) async {
     final file = await exporter.writeCsv(detail);
     return file.path;

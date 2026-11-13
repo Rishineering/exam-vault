@@ -3,9 +3,10 @@ import 'package:sqflite/sqflite.dart';
 
 /// Owns the SQLite connection and schema.
 ///
-/// Schema v1:
-///   papers    - one row per imported question paper
-///   questions - one row per extracted question (the required table)
+/// Schema v3:
+///   papers        - one row per imported question paper
+///   questions     - one row per extracted question
+///   app_settings  - key/value app settings (e.g. onboarding / login state)
 class AppDatabase {
   AppDatabase._();
 
@@ -26,7 +27,7 @@ class AppDatabase {
     final path = p.join(directory, 'exam_vault.db');
     return openDatabase(
       path,
-      version: 1,
+      version: 3,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -64,6 +65,7 @@ class AppDatabase {
             marks REAL,
             options TEXT NOT NULL DEFAULT '[]',
             page_number INTEGER NOT NULL DEFAULT 1,
+            category TEXT NOT NULL DEFAULT '',
             confidence REAL NOT NULL DEFAULT 0,
             needs_review INTEGER NOT NULL DEFAULT 1,
             warnings TEXT NOT NULL DEFAULT '[]',
@@ -74,6 +76,27 @@ class AppDatabase {
         await db.execute(
           'CREATE INDEX idx_questions_paper ON questions (paper_id, order_index)',
         );
+        await db.execute('''
+          CREATE TABLE app_settings (
+            key   TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+          )
+        ''');
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute(
+            'ALTER TABLE questions ADD COLUMN category TEXT NOT NULL DEFAULT \'\'',
+          );
+        }
+        if (oldVersion < 3) {
+          await db.execute('''
+            CREATE TABLE app_settings (
+              key   TEXT PRIMARY KEY,
+              value TEXT NOT NULL
+            )
+          ''');
+        }
       },
     );
   }

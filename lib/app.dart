@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'state/app_state.dart';
 import 'ui/home_screen.dart';
+import 'ui/login_screen.dart';
+import 'ui/welcome_screen.dart';
 
 class ExamVaultApp extends StatefulWidget {
   const ExamVaultApp({super.key});
@@ -12,12 +14,24 @@ class ExamVaultApp extends StatefulWidget {
 
 class _ExamVaultAppState extends State<ExamVaultApp> {
   late final AppState _state;
+  bool _initialized = false;
+  Widget _home = const WelcomeScreen();
 
   @override
   void initState() {
     super.initState();
     _state = AppState();
     _state.refresh();
+    _resolveHome();
+  }
+
+  Future<void> _resolveHome() async {
+    final complete = await _state.isOnboardingComplete();
+    if (!mounted) return;
+    setState(() {
+      _home = complete ? const HomeScreen() : const WelcomeScreen();
+      _initialized = true;
+    });
   }
 
   @override
@@ -38,7 +52,7 @@ class _ExamVaultAppState extends State<ExamVaultApp> {
         themeMode: ThemeMode.system,
         theme: _buildTheme(seed, Brightness.light),
         darkTheme: _buildTheme(seed, Brightness.dark),
-        home: const HomeScreen(),
+        home: _initialized ? _home : const WelcomeScreen(),
       ),
     );
   }

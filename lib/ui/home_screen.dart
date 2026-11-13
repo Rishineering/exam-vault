@@ -2,7 +2,6 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../app.dart';
 import '../data/models.dart';
@@ -11,109 +10,44 @@ import '../state/app_state.dart';
 import 'import_screen.dart';
 import 'paper_screen.dart';
 import 'settings_screen.dart';
+import 'calendar_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final state = AppScope.of(context);
-    final theme = Theme.of(context);
+  State<HomeScreen> createState() => _HomeScreenState();
+}
 
-    return Scaffold(
-      appBar: AppBar(
-        titleSpacing: 16,
-        title: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary,
-                borderRadius: BorderRadius.circular(11),
-              ),
-              child: Icon(
-                Icons.fact_check_rounded,
-                size: 21,
-                color: theme.colorScheme.onPrimary,
-              ),
-            ),
-            const SizedBox(width: 10),
-            const Text('ExamVault',
-                style: TextStyle(fontWeight: FontWeight.w700)),
-          ],
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'About & help',
-            icon: const Icon(Icons.info_outline_rounded),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const SettingsScreen()),
-            ),
-          ),
-          const SizedBox(width: 4),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _pickAndImport(context),
-        icon: const Icon(Icons.upload_file_rounded),
-        label: const Text('Import paper'),
-      ),
-      body: _buildBody(context, state),
-    );
+class _HomeScreenState extends State<HomeScreen> {
+  Map<String, List<StoredQuestion>> _categorized = {};
+  bool _loadingCategories = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
   }
 
-  Widget _buildBody(BuildContext context, AppState state) {
-    if (state.loading && state.papers.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+  Future<void> _loadCategories() async {
+    try {
+      final categorized = await AppScope.read(context)
+          .getTopQuestionsByCategory();
+      if (!mounted) return;
+      setState(() {
+        _categorized = categorized;
+        _loadingCategories = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadingCategories = false);
     }
-
-    if (state.loadError != null && state.papers.isEmpty) {
-      return _ErrorState(
-        message: state.loadError!,
-        onRetry: state.refresh,
-      );
-    }
-
-    if (state.papers.isEmpty) {
-      return _EmptyState(onImport: () => _pickAndImport(context));
-    }
-
-    return RefreshIndicator(
-      onRefresh: state.refresh,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
-        children: [
-          _StatsCard(state: state),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Text(
-                'Question papers',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w700),
-              ),
-              const Spacer(),
-              Text(
-                '${state.papers.length} total',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          for (final paper in state.papers) ...[
-            _PaperCard(paper: paper),
-            const SizedBox(height: 10),
-          ],
-        ],
-      ),
-    );
   }
 
-  Future<void> _pickAndImport(BuildContext context) async {
+  int get _totalTopQuestions =>
+      _categorized.values.fold(0, (sum, list) => sum + list.length);
+
+  Future<void> _pickAndImport(BuildContext context, AppState state) async {
     PlatformFile? picked;
     try {
       picked = await FilePicker.pickFile(
@@ -157,13 +91,471 @@ class HomeScreen extends StatelessWidget {
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => ImportScreen(file: file)),
     );
+    if (mounted) _loadCategories();
+  }
+
+  Widget _buildDrawer(BuildContext context, AppState state) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          DrawerHeader(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [scheme.primary, scheme.tertiary],
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: scheme.onPrimary.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: Icon(
+                    Icons.fact_check_rounded,
+                    color: scheme.onPrimary,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'ExamVault',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: scheme.onPrimary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Text(
+                  'Question papers made simple',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: scheme.onPrimary.withValues(alpha: 0.85),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _DrawerItem(
+            icon: Icons.home_rounded,
+            label: 'Home',
+            selected: true,
+            onTap: () => Navigator.of(context).pop(),
+          ),
+          _DrawerItem(
+            icon: Icons.calendar_today_rounded,
+            label: 'Calendar',
+            onTap: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CalendarScreen()),
+              );
+            },
+          ),
+          const Divider(height: 1),
+          _DrawerItem(
+            icon: Icons.info_outline_rounded,
+            label: 'About & help',
+            onTap: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = AppScope.of(context);
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return Scaffold(
+      appBar: AppBar(
+        titleSpacing: 16,
+        title: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: scheme.primary,
+                borderRadius: BorderRadius.circular(11),
+              ),
+              child: Icon(
+                Icons.fact_check_rounded,
+                size: 21,
+                color: scheme.onPrimary,
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Text('ExamVault',
+                style: TextStyle(fontWeight: FontWeight.w700)),
+          ],
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'About & help',
+            icon: const Icon(Icons.info_outline_rounded),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            ),
+          ),
+          const SizedBox(width: 4),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _pickAndImport(context, state),
+        icon: const Icon(Icons.upload_file_rounded),
+        label: const Text('Import paper'),
+      ),
+      drawer: _buildDrawer(context, state),
+      body: _buildBody(context, state),
+    );
+  }
+
+  Widget _buildBody(BuildContext context, AppState state) {
+    if (state.loading && state.papers.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (state.loadError != null && state.papers.isEmpty) {
+      return _ErrorState(
+        message: state.loadError!,
+        onRetry: state.refresh,
+      );
+    }
+
+    if (_loadingCategories) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_totalTopQuestions == 0 && state.papers.isEmpty) {
+      return _EmptyState(onImport: () => _pickAndImport(context, state));
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        await state.refresh();
+        _loadCategories();
+      },
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+        children: [
+          _StatsCard(state: state),
+          const SizedBox(height: 20),
+          _TopQuestionsHeader(),
+          const SizedBox(height: 12),
+          ..._homeCategoriesWithIcons.entries.map((entry) {
+            final category = entry.key;
+            final questions = _categorized[category] ?? const [];
+            return _CategoryCard(
+              category: category,
+              icon: entry.value,
+              questions: questions,
+              onTapQuestion: (q) => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => PaperScreen(paperId: q.paperId),
+                ),
+              ),
+            );
+          }),
+          const SizedBox(height: 12),
+          if (state.papers.isNotEmpty) ...[
+            _PapersSection(state: state),
+            const SizedBox(height: 12),
+          ],
+        ],
+      ),
+    );
+  }
+
+  static const Map<String, IconData> _homeCategoriesWithIcons = {
+    'History': Icons.event_note_rounded,
+    'Geography': Icons.public_rounded,
+    'Social Science': Icons.people_rounded,
+    'Maths': Icons.calculate_rounded,
+  };
+}
+
+class _TopQuestionsHeader extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0, 0, 0, 4),
+      child: Text(
+        'Top questions',
+        style: theme.textTheme.titleMedium
+            ?.copyWith(fontWeight: FontWeight.w700),
+      ),
+    );
   }
 }
 
-void _showSnack(BuildContext context, String message) {
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(message)));
+class _CategoryCard extends StatelessWidget {
+  const _CategoryCard({
+    required this.category,
+    required this.icon,
+    required this.questions,
+    required this.onTapQuestion,
+  });
+
+  final String category;
+  final IconData icon;
+  final List<StoredQuestion> questions;
+  final void Function(StoredQuestion) onTapQuestion;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: scheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Category header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: scheme.primaryContainer.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: Icon(icon, size: 18, color: scheme.primary),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  category,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: scheme.onSurface,
+                  ),
+                ),
+                const Spacer(),
+                if (questions.isNotEmpty)
+                  Text(
+                    '${questions.length}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          // Questions list
+          if (questions.isEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+              child: Text(
+                'No questions yet — import a paper to get started.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ] else
+            ...questions.map(
+              (q) => _QuestionRow(
+                question: q,
+                onTap: () => onTapQuestion(q),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuestionRow extends StatelessWidget {
+  const _QuestionRow({required this.question, required this.onTap});
+
+  final StoredQuestion question;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Center(
+                child: Text(
+                  question.number,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: scheme.onSurface,
+                    fontSize: 12,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    question.text,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: scheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    _subtitle(question),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: scheme.onSurfaceVariant,
+              size: 20,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _subtitle(StoredQuestion q) {
+    final parts = <String>[];
+    if (q.section.isNotEmpty) parts.add(q.section);
+    if (q.marks != null) parts.add('${q.marks} M');
+    return parts.join('  •  ');
+  }
+}
+
+class _PapersSection extends StatelessWidget {
+  const _PapersSection({required this.state});
+
+  final AppState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
+          child: Row(
+            children: [
+              Text(
+                'Your papers',
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const Spacer(),
+              Text(
+                '${state.papers.length} total',
+                style: theme.textTheme.bodySmall,
+              ),
+            ],
+          ),
+        ),
+        for (final paper in state.papers.take(5)) ...[
+          _PaperCard(paper: paper),
+          const SizedBox(height: 8),
+        ],
+        if (state.papers.length > 5)
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () {},
+              child: const Text('View all'),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _DrawerItem extends StatelessWidget {
+  const _DrawerItem({
+    required this.icon,
+    required this.label,
+    this.selected = false,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return ListTile(
+      leading: Icon(
+        icon,
+        color: selected ? scheme.primary : scheme.onSurfaceVariant,
+        size: 22,
+      ),
+      title: Text(
+        label,
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: selected ? scheme.primary : scheme.onSurface,
+          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+        ),
+      ),
+      selected: selected,
+      selectedTileColor: selected
+          ? scheme.primary.withValues(alpha: 0.08)
+          : Colors.transparent,
+      onTap: onTap,
+    );
+  }
 }
 
 class _StatsCard extends StatelessWidget {
@@ -267,28 +659,24 @@ class _PaperCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => PaperScreen(paperId: paper.id),
-          ),
+          MaterialPageRoute(builder: (_) => PaperScreen(paperId: paper.id)),
         ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 14, 8, 14),
+          padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 42,
-                height: 42,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   color: scheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(11),
                 ),
                 child: Icon(
-                  isPdf
-                      ? Icons.picture_as_pdf_rounded
-                      : Icons.description_rounded,
+                  isPdf ? Icons.picture_as_pdf_rounded : Icons.description_rounded,
                   color: scheme.onPrimaryContainer,
-                  size: 22,
+                  size: 20,
                 ),
               ),
               const SizedBox(width: 12),
@@ -298,20 +686,12 @@ class _PaperCard extends StatelessWidget {
                   children: [
                     Text(
                       paper.title,
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.titleSmall
                           ?.copyWith(fontWeight: FontWeight.w700),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _subtitle(paper),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: scheme.onSurfaceVariant),
-                    ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Wrap(
                       spacing: 6,
                       runSpacing: 6,
@@ -326,10 +706,6 @@ class _PaperCard extends StatelessWidget {
                             label: '${paper.reviewCount} to review',
                             highlight: true,
                           ),
-                        _MiniChip(
-                          icon: Icons.auto_awesome_rounded,
-                          label: '${paper.confidencePercent.round()}% conf.',
-                        ),
                       ],
                     ),
                   ],
@@ -344,16 +720,6 @@ class _PaperCard extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _subtitle(PaperRecord paper) {
-    final parts = <String>[
-      if (paper.metadata.subject != null) paper.metadata.subject!,
-      if (paper.metadata.examYear != null) '${paper.metadata.examYear}',
-      if (paper.metadata.className != null) paper.metadata.className!,
-      DateFormat.yMMMd().format(paper.createdAt),
-    ];
-    return parts.join('  •  ');
   }
 }
 
@@ -384,7 +750,7 @@ class _MiniChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 13, color: fg),
+          Icon(icon, size: 12, color: fg),
           const SizedBox(width: 4),
           Text(
             label,
@@ -501,4 +867,10 @@ class _ErrorState extends StatelessWidget {
       ),
     );
   }
+}
+
+void _showSnack(BuildContext context, String message) {
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(SnackBar(content: Text(message)));
 }

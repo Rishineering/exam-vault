@@ -20,6 +20,7 @@ void main() {
         ParsedOption(label: 'B', text: 'Mumbai'),
       ],
       pageNumber: 1,
+      category: '',
       confidence: 0.92,
       needsReview: false,
       warnings: const [],

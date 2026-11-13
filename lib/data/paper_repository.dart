@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
-
 import '../core/models.dart';
 import 'app_database.dart';
 import 'models.dart';
@@ -178,6 +177,61 @@ class PaperRepository {
     return rows.map(_questionFromRow).toList();
   }
 
+  /// Returns up to [limit] questions belonging to [category], ordered by
+  /// their position in the paper.
+  Future<List<StoredQuestion>> getQuestionsByCategory(
+    String category, {
+    int? limit,
+  }) async {
+    final db = await _database.database;
+    final rows = await db.query(
+      'questions',
+      where: 'category = ?',
+      whereArgs: [category],
+      orderBy: 'order_index ASC, id ASC',
+      limit: limit,
+    );
+    return rows.map(_questionFromRow).toList();
+  }
+
+  /// Returns every distinct category currently used by stored questions.
+  Future<List<String>> getCategories() async {
+    final db = await _database.database;
+    final rows = await db.query(
+      'questions',
+      columns: ['category'],
+      distinct: true,
+      where: "category IS NOT NULL AND category != ''",
+    );
+    return rows.map((r) => (r['category'] as String?) ?? '').toList();
+  }
+
+  // ---------------------------------------------------------------------------
+  // App settings (key/value)
+  // ---------------------------------------------------------------------------
+
+  Future<String?> getSetting(String key) async {
+    final db = await _database.database;
+    final rows = await db.query(
+      'app_settings',
+      columns: ['value'],
+      where: 'key = ?',
+      whereArgs: [key],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return rows.first['value'] as String?;
+  }
+
+  Future<void> setSetting(String key, String value) async {
+    final db = await _database.database;
+    await db.insert(
+      'app_settings',
+      {'key': key, 'value': value},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
   Future<PaperDetail?> getPaperDetail(int paperId) async {
     final paper = await getPaper(paperId);
     if (paper == null) return null;
@@ -229,6 +283,7 @@ class PaperRepository {
       marks: (row['marks'] as num?)?.toDouble(),
       options: _decodeOptions(row['options'] as String?),
       pageNumber: (row['page_number'] as int?) ?? 1,
+      category: (row['category'] as String?) ?? '',
       confidence: ((row['confidence'] as num?) ?? 0).toDouble(),
       needsReview: ((row['needs_review'] as int?) ?? 0) == 1,
       warnings: _decodeStringList(row['warnings'] as String?),
