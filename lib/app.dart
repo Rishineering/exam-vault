@@ -22,16 +22,21 @@ class _ExamVaultAppState extends State<ExamVaultApp> {
     super.initState();
     _state = AppState();
     _state.refresh();
-    _resolveHome();
+    _seedAndResolveHome();
   }
 
-  Future<void> _resolveHome() async {
+  Future<void> _seedAndResolveHome() async {
+    // Seed dummy questions on first launch so the home screen categories are
+    // immediately visible.
+    await _state.seedIfEmpty();
     final complete = await _state.isOnboardingComplete();
     if (!mounted) return;
     setState(() {
       _home = complete ? const HomeScreen() : const WelcomeScreen();
       _initialized = true;
     });
+    // Refresh papers after seeding so the home screen lists show the data.
+    await _state.refresh();
   }
 
   @override

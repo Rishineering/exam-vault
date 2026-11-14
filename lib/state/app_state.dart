@@ -141,6 +141,9 @@ class AppState extends ChangeNotifier {
   /// Returns every distinct category currently stored in the database.
   Future<List<String>> getStoredCategories() => _repository.getCategories();
 
+  /// Seeds the database with dummy questions if no papers exist yet.
+  Future<void> seedIfEmpty() => _repository.seedIfEmpty();
+
   Future<String> writeCsv(PaperDetail detail) async {
     final file = await exporter.writeCsv(detail);
     return file.path;

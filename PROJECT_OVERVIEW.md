@@ -202,7 +202,41 @@ Routing is resolved in `lib/app.dart` (`ExamVaultApp`) by checking
 `AppState.isOnboardingComplete()` at startup.
 
 --------------------------------------------------------------------------------
-8. HOME SCREEN & NAVIGATION DRAWER
+8. DUMMY DATA SEEDING (10 QUESTIONS FOR HOME SCREEN)
+--------------------------------------------------------------------------------
+
+To make the home screen "Top questions" categories visible immediately, the
+app seeds 10 dummy questions into the SQLite database on first launch (when no
+papers exist yet). The seeding logic lives in:
+
+- **`lib/data/dummy_data.dart`**: 10 questions as Dart constants across 4
+  categories — History (3), Geography (3), Social Science (3), Maths (1).
+- **`lib/data/paper_repository.dart`** (`seedIfEmpty`): Inserts the dummy
+  paper + questions only if `listPapers()` returns empty (idempotent).
+- **`lib/state/app_state.dart`** (`seedIfEmpty`): Delegates to the repository.
+- **`lib/app.dart`** (`_seedAndResolveHome`): Calls `seedIfEmpty()` during
+  app initialization, before resolving the home route.
+
+Dummy data breakdown (10 total):
+
+| # | Question | Category | Section | Marks |
+|---|----------|----------|---------|-------|
+| 1 | Who was the first President of the United States? | History | Section A | 2 |
+| 2 | In which year did India gain independence? | History | Section A | 2 |
+| 3 | Which river is known as the 'Sorrow of Bihar'? | History | Section A | 2 |
+| 4 | What is the capital of Australia? | Geography | Section B | 2 |
+| 5 | Which is the largest continent by land area? | Geography | Section B | 2 |
+| 6 | The Sahara Desert is located in which continent? | Geography | Section B | 2 |
+| 7 | What are the three tiers of the Panchayati Raj system? | Social Science | Section C | 3 |
+| 8 | Describe the fundamental rights guaranteed by the Constitution of India. | Social Science | Section C | 5 |
+| 9 | Explain the causes of the French Revolution. | Social Science | Section C | 5 |
+| 10 | Solve for x: 2x + 5 = 15 | Maths | Section D | 4 |
+
+The seeding is a one-time operation: once the user imports their own paper,
+`listPapers()` returns non-empty and seeding is skipped.
+
+--------------------------------------------------------------------------------
+9. HOME SCREEN & NAVIGATION DRAWER
 --------------------------------------------------------------------------------
 
 Home screen:

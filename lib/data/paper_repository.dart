@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 import '../core/models.dart';
 import 'app_database.dart';
+import 'dummy_data.dart';
 import 'models.dart';
 
 /// CRUD for papers and their questions.
@@ -230,6 +231,63 @@ class PaperRepository {
       {'key': key, 'value': value},
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+  }
+
+  /// Seeds the database with dummy questions if no papers exist yet.
+  ///
+  /// This makes the home screen "Top questions" categories visible on first
+  /// launch so the user can immediately see the categorized layout.
+  Future<void> seedIfEmpty() async {
+    final existing = await listPapers();
+    if (existing.isNotEmpty) return;
+
+    final db = await _database.database;
+    final now = DateTime.now().millisecondsSinceEpoch;
+
+    return db.transaction<void>((txn) async {
+      final paperId = await txn.insert('papers', {
+        'title': DummyData.paperTitle,
+        'file_name': 'sample_questions.txt',
+        'source_type': SourceType.txt.name,
+        'extraction_method': ExtractionMethod.plainText.name,
+        'page_count': 1,
+        'question_count': DummyData.questions.length,
+        'review_count': 0,
+        'average_confidence': 0.9,
+        'exam_year': DummyData.paperExamYear,
+        'subject': DummyData.paperSubject,
+        'class_name': DummyData.paperClassName,
+        'duration': DummyData.paperDuration,
+        'total_marks': DummyData.paperTotalMarks,
+        'exam_name': DummyData.paperExamName,
+        'warnings': '[]',
+        'raw_text': '',
+        'created_at': now,
+      });
+
+      final batch = txn.batch();
+      for (final raw in DummyData.questions) {
+        final q = dummyQuestionFromMap(raw);
+        batch.insert('questions', {
+          'paper_id': paperId,
+          'number': q.number,
+          'order_index': q.orderIndex,
+          'text': q.text,
+          'section': q.section,
+          'marks': q.marks,
+          'options': jsonEncode(
+            q.options.map((o) => o.toJson()).toList(),
+          ),
+          'page_number': q.pageNumber,
+          'category': raw['category'] as String,
+          'confidence': q.confidence,
+          'needs_review': q.needsReview ? 1 : 0,
+          'warnings': jsonEncode(q.warnings),
+          'raw_block': '',
+        });
+      }
+      await batch.commit(noResult: true);
+    });
   }
 
   Future<PaperDetail?> getPaperDetail(int paperId) async {
