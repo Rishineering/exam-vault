@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'state/app_state.dart';
 import 'ui/home_screen.dart';
 import 'ui/login_screen.dart';
+import 'ui/profile_setup_screen.dart';
 import 'ui/welcome_screen.dart';
 
 class ExamVaultApp extends StatefulWidget {
@@ -29,10 +30,17 @@ class _ExamVaultAppState extends State<ExamVaultApp> {
     // Seed dummy questions on first launch so the home screen categories are
     // immediately visible.
     await _state.seedIfEmpty();
+    await _state.loadUserProfile();
     final complete = await _state.isOnboardingComplete();
     if (!mounted) return;
     setState(() {
-      _home = complete ? const HomeScreen() : const WelcomeScreen();
+      if (!complete) {
+        _home = const WelcomeScreen();
+      } else if (!_state.isProfileSetup) {
+        _home = const ProfileSetupScreen();
+      } else {
+        _home = const HomeScreen();
+      }
       _initialized = true;
     });
     // Refresh papers after seeding so the home screen lists show the data.

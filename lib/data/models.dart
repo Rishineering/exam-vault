@@ -79,6 +79,11 @@ class StoredQuestion {
     required this.options,
     required this.pageNumber,
     required this.category,
+    required this.difficulty,
+    required this.importance,
+    required this.isPyq,
+    this.examYear,
+    this.examName,
     required this.confidence,
     required this.needsReview,
     required this.warnings,
@@ -96,6 +101,11 @@ class StoredQuestion {
   final List<ParsedOption> options;
   final int pageNumber;
   final String category;
+  final String difficulty;
+  final String importance;
+  final bool isPyq;
+  final int? examYear;
+  final String? examName;
   final double confidence;
   final bool needsReview;
   final List<String> warnings;
@@ -126,6 +136,11 @@ class StoredQuestion {
     List<ParsedOption>? options,
     int? pageNumber,
     String? category,
+    String? difficulty,
+    String? importance,
+    bool? isPyq,
+    int? examYear,
+    String? examName,
     double? confidence,
     bool? needsReview,
     List<String>? warnings,
@@ -142,6 +157,11 @@ class StoredQuestion {
       options: options ?? this.options,
       pageNumber: pageNumber ?? this.pageNumber,
       category: category ?? this.category,
+      difficulty: difficulty ?? this.difficulty,
+      importance: importance ?? this.importance,
+      isPyq: isPyq ?? this.isPyq,
+      examYear: examYear ?? this.examYear,
+      examName: examName ?? this.examName,
       confidence: confidence ?? this.confidence,
       needsReview: needsReview ?? this.needsReview,
       warnings: warnings ?? this.warnings,
@@ -232,6 +252,346 @@ class GeneratedQuestion {
       generationBatch: generationBatch ?? this.generationBatch,
       createdAt: createdAt ?? this.createdAt,
       rawBlock: rawBlock ?? this.rawBlock,
+    );
+  }
+}
+
+/// User's exam profile set during signup/login.
+class UserProfile {
+  const UserProfile({
+    required this.id,
+    required this.targetExam,
+    this.targetDate,
+    required this.language,
+    required this.profileSetup,
+    required this.createdAt,
+  });
+
+  final int id;
+  final String targetExam;
+  final String? targetDate;
+  final String language;
+  final bool profileSetup;
+  final DateTime createdAt;
+
+  UserProfile copyWith({
+    int? id,
+    String? targetExam,
+    String? targetDate,
+    String? language,
+    bool? profileSetup,
+    DateTime? createdAt,
+  }) {
+    return UserProfile(
+      id: id ?? this.id,
+      targetExam: targetExam ?? this.targetExam,
+      targetDate: targetDate ?? this.targetDate,
+      language: language ?? this.language,
+      profileSetup: profileSetup ?? this.profileSetup,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+}
+
+/// User-defined/customizable subject for syllabus tracking.
+class Subject {
+  const Subject({
+    required this.id,
+    required this.name,
+    required this.color,
+    required this.weight,
+    required this.isActive,
+    required this.createdAt,
+  });
+
+  final int id;
+  final String name;
+  final String color;
+  final double weight;
+  final bool isActive;
+  final DateTime createdAt;
+
+  Subject copyWith({
+    int? id,
+    String? name,
+    String? color,
+    double? weight,
+    bool? isActive,
+    DateTime? createdAt,
+  }) {
+    return Subject(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      color: color ?? this.color,
+      weight: weight ?? this.weight,
+      isActive: isActive ?? this.isActive,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+}
+
+/// A syllabus topic under a subject.
+class SyllabusTopic {
+  const SyllabusTopic({
+    required this.id,
+    required this.subjectId,
+    required this.name,
+    required this.isCompleted,
+    required this.totalQuestions,
+    required this.coveredQuestions,
+  });
+
+  final int id;
+  final int subjectId;
+  final String name;
+  final bool isCompleted;
+  final int totalQuestions;
+  final int coveredQuestions;
+
+  double get completionPercent =>
+      totalQuestions == 0 ? 0.0 : (coveredQuestions / totalQuestions) * 100;
+
+  SyllabusTopic copyWith({
+    int? id,
+    int? subjectId,
+    String? name,
+    bool? isCompleted,
+    int? totalQuestions,
+    int? coveredQuestions,
+  }) {
+    return SyllabusTopic(
+      id: id ?? this.id,
+      subjectId: subjectId ?? this.subjectId,
+      name: name ?? this.name,
+      isCompleted: isCompleted ?? this.isCompleted,
+      totalQuestions: totalQuestions ?? this.totalQuestions,
+      coveredQuestions: coveredQuestions ?? this.coveredQuestions,
+    );
+  }
+}
+
+/// Mock test metadata.
+class MockTest {
+  const MockTest({
+    required this.id,
+    required this.title,
+    required this.examProfile,
+    this.subjectFilter,
+    this.topicFilter,
+    this.difficultyFilter,
+    required this.questionCount,
+    required this.durationMinutes,
+    required this.isPyqOnly,
+    required this.createdAt,
+  });
+
+  final int id;
+  final String title;
+  final String examProfile;
+  final String? subjectFilter;
+  final String? topicFilter;
+  final String? difficultyFilter;
+  final int questionCount;
+  final int durationMinutes;
+  final bool isPyqOnly;
+  final DateTime createdAt;
+
+  MockTest copyWith({
+    int? id,
+    String? title,
+    String? examProfile,
+    String? subjectFilter,
+    String? topicFilter,
+    String? difficultyFilter,
+    int? questionCount,
+    int? durationMinutes,
+    bool? isPyqOnly,
+    DateTime? createdAt,
+  }) {
+    return MockTest(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      examProfile: examProfile ?? this.examProfile,
+      subjectFilter: subjectFilter ?? this.subjectFilter,
+      topicFilter: topicFilter ?? this.topicFilter,
+      difficultyFilter: difficultyFilter ?? this.difficultyFilter,
+      questionCount: questionCount ?? this.questionCount,
+      durationMinutes: durationMinutes ?? this.durationMinutes,
+      isPyqOnly: isPyqOnly ?? this.isPyqOnly,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+}
+
+/// A user's attempt at a mock test.
+class MockTestAttempt {
+  const MockTestAttempt({
+    required this.id,
+    required this.testId,
+    required this.score,
+    required this.total,
+    required this.percentage,
+    required this.timeTaken,
+    required this.startedAt,
+    this.completedAt,
+  });
+
+  final int id;
+  final int testId;
+  final int score;
+  final int total;
+  final double percentage;
+  final int timeTaken;
+  final DateTime startedAt;
+  final DateTime? completedAt;
+
+  MockTestAttempt copyWith({
+    int? id,
+    int? testId,
+    int? score,
+    int? total,
+    double? percentage,
+    int? timeTaken,
+    DateTime? startedAt,
+    DateTime? completedAt,
+  }) {
+    return MockTestAttempt(
+      id: id ?? this.id,
+      testId: testId ?? this.testId,
+      score: score ?? this.score,
+      total: total ?? this.total,
+      percentage: percentage ?? this.percentage,
+      timeTaken: timeTaken ?? this.timeTaken,
+      startedAt: startedAt ?? this.startedAt,
+      completedAt: completedAt ?? this.completedAt,
+    );
+  }
+}
+
+/// A user's answer to a single question in an attempt.
+class AttemptAnswer {
+  const AttemptAnswer({
+    required this.id,
+    required this.attemptId,
+    required this.questionId,
+    this.userAnswer,
+    required this.isCorrect,
+    required this.timeSpent,
+  });
+
+  final int id;
+  final int attemptId;
+  final int questionId;
+  final String? userAnswer;
+  final bool isCorrect;
+  final int timeSpent;
+
+  AttemptAnswer copyWith({
+    int? id,
+    int? attemptId,
+    int? questionId,
+    String? userAnswer,
+    bool? isCorrect,
+    int? timeSpent,
+  }) {
+    return AttemptAnswer(
+      id: id ?? this.id,
+      attemptId: attemptId ?? this.attemptId,
+      questionId: questionId ?? this.questionId,
+      userAnswer: userAnswer ?? this.userAnswer,
+      isCorrect: isCorrect ?? this.isCorrect,
+      timeSpent: timeSpent ?? this.timeSpent,
+    );
+  }
+}
+
+/// Explanation for a question in a specific language.
+class QuestionExplanation {
+  const QuestionExplanation({
+    required this.id,
+    required this.questionId,
+    required this.language,
+    required this.explanation,
+    this.source,
+  });
+
+  final int id;
+  final int questionId;
+  final String language;
+  final String explanation;
+  final String? source;
+
+  QuestionExplanation copyWith({
+    int? id,
+    int? questionId,
+    String? language,
+    String? explanation,
+    String? source,
+  }) {
+    return QuestionExplanation(
+      id: id ?? this.id,
+      questionId: questionId ?? this.questionId,
+      language: language ?? this.language,
+      explanation: explanation ?? this.explanation,
+      source: source ?? this.source,
+    );
+  }
+}
+
+/// A bookmarked question.
+class Bookmark {
+  const Bookmark({
+    required this.id,
+    required this.questionId,
+    required this.createdAt,
+  });
+
+  final int id;
+  final int questionId;
+  final DateTime createdAt;
+
+  Bookmark copyWith({
+    int? id,
+    int? questionId,
+    DateTime? createdAt,
+  }) {
+    return Bookmark(
+      id: id ?? this.id,
+      questionId: questionId ?? this.questionId,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+}
+
+/// Spaced repetition revision item.
+class RevisionItem {
+  const RevisionItem({
+    required this.id,
+    required this.questionId,
+    required this.nextReview,
+    required this.intervalDays,
+    required this.easeFactor,
+  });
+
+  final int id;
+  final int questionId;
+  final DateTime nextReview;
+  final int intervalDays;
+  final double easeFactor;
+
+  RevisionItem copyWith({
+    int? id,
+    int? questionId,
+    DateTime? nextReview,
+    int? intervalDays,
+    double? easeFactor,
+  }) {
+    return RevisionItem(
+      id: id ?? this.id,
+      questionId: questionId ?? this.questionId,
+      nextReview: nextReview ?? this.nextReview,
+      intervalDays: intervalDays ?? this.intervalDays,
+      easeFactor: easeFactor ?? this.easeFactor,
     );
   }
 }

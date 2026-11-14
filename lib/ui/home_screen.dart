@@ -11,6 +11,11 @@ import 'import_screen.dart';
 import 'paper_screen.dart';
 import 'settings_screen.dart';
 import 'calendar_screen.dart';
+import 'profile_setup_screen.dart';
+import 'syllabus_tracker_screen.dart';
+import 'pyq_explorer_screen.dart';
+import 'create_mock_test_screen.dart';
+import 'analytics_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -160,6 +165,69 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
           const Divider(height: 1),
+          _DrawerItem(
+            icon: Icons.school_rounded,
+            label: 'Syllabus Tracker',
+            onTap: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SyllabusTrackerScreen()),
+              );
+            },
+          ),
+          _DrawerItem(
+            icon: Icons.history_rounded,
+            label: 'PYQ Explorer',
+            onTap: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const PYQExplorerScreen()),
+              );
+            },
+          ),
+          _DrawerItem(
+            icon: Icons.assignment_rounded,
+            label: 'Mock Tests',
+            onTap: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CreateMockTestScreen()),
+              );
+            },
+          ),
+          _DrawerItem(
+            icon: Icons.show_chart_rounded,
+            label: 'Analytics',
+            onTap: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AnalyticsScreen()),
+              );
+            },
+          ),
+          _DrawerItem(
+            icon: Icons.schedule_rounded,
+            label: 'Revision Queue',
+            onTap: () {
+              Navigator.of(context).pop();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Revision queue - coming soon'),
+                ),
+              );
+            },
+          ),
+          const Divider(height: 1),
+          _DrawerItem(
+            icon: Icons.person_rounded,
+            label: 'Profile',
+            onTap: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ProfileSetupScreen()),
+              );
+            },
+          ),
           _DrawerItem(
             icon: Icons.info_outline_rounded,
             label: 'About & help',

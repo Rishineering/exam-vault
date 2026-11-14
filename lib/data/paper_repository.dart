@@ -65,6 +65,12 @@ class PaperRepository {
           'marks': question.marks,
           'options': jsonEncode(question.options.map((o) => o.toJson()).toList()),
           'page_number': question.pageNumber,
+          'category': '',
+          'difficulty': 'Medium',
+          'importance': 'Medium',
+          'is_pyq': 0,
+          'exam_year': null,
+          'exam_name': null,
           'confidence': question.confidence,
           'needs_review': question.needsReview ? 1 : 0,
           'warnings': jsonEncode(question.warnings),
@@ -346,6 +352,11 @@ class PaperRepository {
       options: _decodeOptions(row['options'] as String?),
       pageNumber: (row['page_number'] as int?) ?? 1,
       category: (row['category'] as String?) ?? '',
+      difficulty: (row['difficulty'] as String?) ?? 'Medium',
+      importance: (row['importance'] as String?) ?? 'Medium',
+      isPyq: ((row['is_pyq'] as int?) ?? 0) == 1,
+      examYear: (row['exam_year'] as int?),
+      examName: (row['exam_name'] as String?),
       confidence: ((row['confidence'] as num?) ?? 0).toDouble(),
       needsReview: ((row['needs_review'] as int?) ?? 0) == 1,
       warnings: _decodeStringList(row['warnings'] as String?),
@@ -532,6 +543,527 @@ class PaperRepository {
         (row['created_at'] as int?) ?? 0,
       ),
       rawBlock: (row['raw_block'] as String?) ?? '',
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // User Profile CRUD
+  // ---------------------------------------------------------------------------
+
+  Future<int> insertUserProfile(UserProfile profile) async {
+    final db = await _database.database;
+    return await db.insert('user_profiles', {
+      'target_exam': profile.targetExam,
+      'target_date': profile.targetDate,
+      'language': profile.language,
+      'profile_setup': profile.profileSetup ? 1 : 0,
+      'created_at': profile.createdAt.millisecondsSinceEpoch,
+    });
+  }
+
+  Future<UserProfile?> getUserProfile() async {
+    final db = await _database.database;
+    final rows = await db.query(
+      'user_profiles',
+      orderBy: 'created_at DESC',
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return _userProfileFromRow(rows.first);
+  }
+
+  Future<void> updateUserProfile(UserProfile profile) async {
+    final db = await _database.database;
+    await db.update(
+      'user_profiles',
+      {
+        'target_exam': profile.targetExam,
+        'target_date': profile.targetDate,
+        'language': profile.language,
+        'profile_setup': profile.profileSetup ? 1 : 0,
+      },
+      where: 'id = ?',
+      whereArgs: [profile.id],
+    );
+  }
+
+  UserProfile _userProfileFromRow(Map<String, Object?> row) {
+    return UserProfile(
+      id: row['id'] as int,
+      targetExam: (row['target_exam'] as String?) ?? '',
+      targetDate: (row['target_date'] as String?),
+      language: (row['language'] as String?) ?? 'en',
+      profileSetup: ((row['profile_setup'] as int?) ?? 0) == 1,
+      createdAt: DateTime.fromMillisecondsSinceEpoch(
+        (row['created_at'] as int?) ?? 0,
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Subject CRUD
+  // ---------------------------------------------------------------------------
+
+  Future<int> insertSubject(Subject subject) async {
+    final db = await _database.database;
+    return await db.insert('subjects', {
+      'name': subject.name,
+      'color': subject.color,
+      'weight': subject.weight,
+      'is_active': subject.isActive ? 1 : 0,
+      'created_at': subject.createdAt.millisecondsSinceEpoch,
+    });
+  }
+
+  Future<List<Subject>> listSubjects({bool? isActive}) async {
+    final db = await _database.database;
+    final whereClauses = <String>[];
+    final whereArgs = <Object?>[];
+    if (isActive != null) {
+      whereClauses.add('is_active = ?');
+      whereArgs.add(isActive ? 1 : 0);
+    }
+    final rows = await db.query(
+      'subjects',
+      where: whereClauses.isNotEmpty ? whereClauses.join(' AND ') : null,
+      whereArgs: whereArgs.isNotEmpty ? whereArgs : null,
+      orderBy: 'created_at ASC',
+    );
+    return rows.map(_subjectFromRow).toList();
+  }
+
+  Future<void> updateSubject(Subject subject) async {
+    final db = await _database.database;
+    await db.update(
+      'subjects',
+      {
+        'name': subject.name,
+        'color': subject.color,
+        'weight': subject.weight,
+        'is_active': subject.isActive ? 1 : 0,
+      },
+      where: 'id = ?',
+      whereArgs: [subject.id],
+    );
+  }
+
+  Future<void> deleteSubject(int subjectId) async {
+    final db = await _database.database;
+    await db.delete('subjects', where: 'id = ?', whereArgs: [subjectId]);
+  }
+
+  Subject _subjectFromRow(Map<String, Object?> row) {
+    return Subject(
+      id: row['id'] as int,
+      name: (row['name'] as String?) ?? '',
+      color: (row['color'] as String?) ?? '#3554D1',
+      weight: ((row['weight'] as num?) ?? 1.0).toDouble(),
+      isActive: ((row['is_active'] as int?) ?? 1) == 1,
+      createdAt: DateTime.fromMillisecondsSinceEpoch(
+        (row['created_at'] as int?) ?? 0,
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Syllabus Topic CRUD
+  // ---------------------------------------------------------------------------
+
+  Future<int> insertSyllabusTopic(SyllabusTopic topic) async {
+    final db = await _database.database;
+    return await db.insert('syllabus_topics', {
+      'subject_id': topic.subjectId,
+      'name': topic.name,
+      'is_completed': topic.isCompleted ? 1 : 0,
+      'total_questions': topic.totalQuestions,
+      'covered_questions': topic.coveredQuestions,
+    });
+  }
+
+  Future<List<SyllabusTopic>> listSyllabusTopics({int? subjectId}) async {
+    final db = await _database.database;
+    final whereClauses = <String>[];
+    final whereArgs = <Object?>[];
+    if (subjectId != null) {
+      whereClauses.add('subject_id = ?');
+      whereArgs.add(subjectId);
+    }
+    final rows = await db.query(
+      'syllabus_topics',
+      where: whereClauses.isNotEmpty ? whereClauses.join(' AND ') : null,
+      whereArgs: whereArgs.isNotEmpty ? whereArgs : null,
+      orderBy: 'name ASC',
+    );
+    return rows.map(_syllabusTopicFromRow).toList();
+  }
+
+  Future<void> updateSyllabusTopic(SyllabusTopic topic) async {
+    final db = await _database.database;
+    await db.update(
+      'syllabus_topics',
+      {
+        'name': topic.name,
+        'is_completed': topic.isCompleted ? 1 : 0,
+        'total_questions': topic.totalQuestions,
+        'covered_questions': topic.coveredQuestions,
+      },
+      where: 'id = ?',
+      whereArgs: [topic.id],
+    );
+  }
+
+  Future<void> deleteSyllabusTopic(int topicId) async {
+    final db = await _database.database;
+    await db.delete('syllabus_topics', where: 'id = ?', whereArgs: [topicId]);
+  }
+
+  SyllabusTopic _syllabusTopicFromRow(Map<String, Object?> row) {
+    return SyllabusTopic(
+      id: row['id'] as int,
+      subjectId: (row['subject_id'] as int?) ?? 0,
+      name: (row['name'] as String?) ?? '',
+      isCompleted: ((row['is_completed'] as int?) ?? 0) == 1,
+      totalQuestions: (row['total_questions'] as int?) ?? 0,
+      coveredQuestions: (row['covered_questions'] as int?) ?? 0,
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Question-Topic Mapping
+  // ---------------------------------------------------------------------------
+
+  Future<void> linkQuestionToTopic(int questionId, int topicId) async {
+    final db = await _database.database;
+    await db.insert('question_topics', {
+      'question_id': questionId,
+      'topic_id': topicId,
+    });
+  }
+
+  Future<List<int>> getTopicIdsForQuestion(int questionId) async {
+    final db = await _database.database;
+    final rows = await db.query(
+      'question_topics',
+      columns: ['topic_id'],
+      where: 'question_id = ?',
+      whereArgs: [questionId],
+    );
+    return rows.map((r) => (r['topic_id'] as int?) ?? 0).toList();
+  }
+
+  Future<List<int>> getQuestionIdsForTopic(int topicId) async {
+    final db = await _database.database;
+    final rows = await db.query(
+      'question_topics',
+      columns: ['question_id'],
+      where: 'topic_id = ?',
+      whereArgs: [topicId],
+    );
+    return rows.map((r) => (r['question_id'] as int?) ?? 0).toList();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Mock Test CRUD
+  // ---------------------------------------------------------------------------
+
+  Future<int> insertMockTest(MockTest test) async {
+    final db = await _database.database;
+    return await db.insert('mock_tests', {
+      'title': test.title,
+      'exam_profile': test.examProfile,
+      'subject_filter': test.subjectFilter,
+      'topic_filter': test.topicFilter,
+      'difficulty_filter': test.difficultyFilter,
+      'question_count': test.questionCount,
+      'duration_minutes': test.durationMinutes,
+      'is_pyq_only': test.isPyqOnly ? 1 : 0,
+      'created_at': test.createdAt.millisecondsSinceEpoch,
+    });
+  }
+
+  Future<List<MockTest>> listMockTests() async {
+    final db = await _database.database;
+    final rows = await db.query(
+      'mock_tests',
+      orderBy: 'created_at DESC',
+    );
+    return rows.map(_mockTestFromRow).toList();
+  }
+
+  Future<MockTest?> getMockTest(int testId) async {
+    final db = await _database.database;
+    final rows = await db.query(
+      'mock_tests',
+      where: 'id = ?',
+      whereArgs: [testId],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return _mockTestFromRow(rows.first);
+  }
+
+  Future<void> deleteMockTest(int testId) async {
+    final db = await _database.database;
+    await db.delete('mock_tests', where: 'id = ?', whereArgs: [testId]);
+  }
+
+  MockTest _mockTestFromRow(Map<String, Object?> row) {
+    return MockTest(
+      id: row['id'] as int,
+      title: (row['title'] as String?) ?? '',
+      examProfile: (row['exam_profile'] as String?) ?? '',
+      subjectFilter: (row['subject_filter'] as String?),
+      topicFilter: (row['topic_filter'] as String?),
+      difficultyFilter: (row['difficulty_filter'] as String?),
+      questionCount: (row['question_count'] as int?) ?? 0,
+      durationMinutes: (row['duration_minutes'] as int?) ?? 0,
+      isPyqOnly: ((row['is_pyq_only'] as int?) ?? 0) == 1,
+      createdAt: DateTime.fromMillisecondsSinceEpoch(
+        (row['created_at'] as int?) ?? 0,
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Mock Test Attempt CRUD
+  // ---------------------------------------------------------------------------
+
+  Future<int> insertMockTestAttempt(MockTestAttempt attempt) async {
+    final db = await _database.database;
+    return await db.insert('mock_test_attempts', {
+      'test_id': attempt.testId,
+      'score': attempt.score,
+      'total': attempt.total,
+      'percentage': attempt.percentage,
+      'time_taken': attempt.timeTaken,
+      'started_at': attempt.startedAt.millisecondsSinceEpoch,
+      'completed_at':
+          attempt.completedAt?.millisecondsSinceEpoch,
+    });
+  }
+
+  Future<List<MockTestAttempt>> listMockTestAttempts({int? testId}) async {
+    final db = await _database.database;
+    final whereClauses = <String>[];
+    final whereArgs = <Object?>[];
+    if (testId != null) {
+      whereClauses.add('test_id = ?');
+      whereArgs.add(testId);
+    }
+    final rows = await db.query(
+      'mock_test_attempts',
+      where: whereClauses.isNotEmpty ? whereClauses.join(' AND ') : null,
+      whereArgs: whereArgs.isNotEmpty ? whereArgs : null,
+      orderBy: 'started_at DESC',
+    );
+    return rows.map(_mockTestAttemptFromRow).toList();
+  }
+
+  MockTestAttempt _mockTestAttemptFromRow(Map<String, Object?> row) {
+    return MockTestAttempt(
+      id: row['id'] as int,
+      testId: (row['test_id'] as int?) ?? 0,
+      score: (row['score'] as int?) ?? 0,
+      total: (row['total'] as int?) ?? 0,
+      percentage: ((row['percentage'] as num?) ?? 0).toDouble(),
+      timeTaken: (row['time_taken'] as int?) ?? 0,
+      startedAt: DateTime.fromMillisecondsSinceEpoch(
+        (row['started_at'] as int?) ?? 0,
+      ),
+      completedAt: (row['completed_at'] as int?) != null
+          ? DateTime.fromMillisecondsSinceEpoch(
+              (row['completed_at'] as int)!,
+            )
+          : null,
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Attempt Answer CRUD
+  // ---------------------------------------------------------------------------
+
+  Future<int> insertAttemptAnswer(AttemptAnswer answer) async {
+    final db = await _database.database;
+    return await db.insert('attempt_answers', {
+      'attempt_id': answer.attemptId,
+      'question_id': answer.questionId,
+      'user_answer': answer.userAnswer,
+      'is_correct': answer.isCorrect ? 1 : 0,
+      'time_spent': answer.timeSpent,
+    });
+  }
+
+  Future<List<AttemptAnswer>> listAttemptAnswers(int attemptId) async {
+    final db = await _database.database;
+    final rows = await db.query(
+      'attempt_answers',
+      where: 'attempt_id = ?',
+      whereArgs: [attemptId],
+      orderBy: 'id ASC',
+    );
+    return rows.map(_attemptAnswerFromRow).toList();
+  }
+
+  AttemptAnswer _attemptAnswerFromRow(Map<String, Object?> row) {
+    return AttemptAnswer(
+      id: row['id'] as int,
+      attemptId: (row['attempt_id'] as int?) ?? 0,
+      questionId: (row['question_id'] as int?) ?? 0,
+      userAnswer: (row['user_answer'] as String?),
+      isCorrect: ((row['is_correct'] as int?) ?? 0) == 1,
+      timeSpent: (row['time_spent'] as int?) ?? 0,
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Question Explanation CRUD
+  // ---------------------------------------------------------------------------
+
+  Future<int> insertQuestionExplanation(QuestionExplanation explanation) async {
+    final db = await _database.database;
+    return await db.insert('question_explanations', {
+      'question_id': explanation.questionId,
+      'language': explanation.language,
+      'explanation': explanation.explanation,
+      'source': explanation.source,
+    });
+  }
+
+  Future<QuestionExplanation?> getQuestionExplanation(
+    int questionId,
+    String language,
+  ) async {
+    final db = await _database.database;
+    final rows = await db.query(
+      'question_explanations',
+      where: 'question_id = ? AND language = ?',
+      whereArgs: [questionId, language],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return _questionExplanationFromRow(rows.first);
+  }
+
+  Future<void> updateQuestionExplanation(QuestionExplanation explanation) async {
+    final db = await _database.database;
+    await db.update(
+      'question_explanations',
+      {
+        'language': explanation.language,
+        'explanation': explanation.explanation,
+        'source': explanation.source,
+      },
+      where: 'id = ?',
+      whereArgs: [explanation.id],
+    );
+  }
+
+  QuestionExplanation _questionExplanationFromRow(Map<String, Object?> row) {
+    return QuestionExplanation(
+      id: row['id'] as int,
+      questionId: (row['question_id'] as int?) ?? 0,
+      language: (row['language'] as String?) ?? 'en',
+      explanation: (row['explanation'] as String?) ?? '',
+      source: (row['source'] as String?),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Bookmark CRUD
+  // ---------------------------------------------------------------------------
+
+  Future<int> insertBookmark(Bookmark bookmark) async {
+    final db = await _database.database;
+    return await db.insert('bookmarks', {
+      'question_id': bookmark.questionId,
+      'created_at': bookmark.createdAt.millisecondsSinceEpoch,
+    });
+  }
+
+  Future<List<Bookmark>> listBookmarks() async {
+    final db = await _database.database;
+    final rows = await db.query(
+      'bookmarks',
+      orderBy: 'created_at DESC',
+    );
+    return rows.map(_bookmarkFromRow).toList();
+  }
+
+  Future<bool> isBookmarked(int questionId) async {
+    final db = await _database.database;
+    final rows = await db.query(
+      'bookmarks',
+      where: 'question_id = ?',
+      whereArgs: [questionId],
+      limit: 1,
+    );
+    return rows.isNotEmpty;
+  }
+
+  Future<void> deleteBookmark(int questionId) async {
+    final db = await _database.database;
+    await db.delete('bookmarks', where: 'question_id = ?', whereArgs: [questionId]);
+  }
+
+  Bookmark _bookmarkFromRow(Map<String, Object?> row) {
+    return Bookmark(
+      id: row['id'] as int,
+      questionId: (row['question_id'] as int?) ?? 0,
+      createdAt: DateTime.fromMillisecondsSinceEpoch(
+        (row['created_at'] as int?) ?? 0,
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Revision Schedule CRUD
+  // ---------------------------------------------------------------------------
+
+  Future<int> insertRevisionItem(RevisionItem item) async {
+    final db = await _database.database;
+    return await db.insert('revision_schedule', {
+      'question_id': item.questionId,
+      'next_review': item.nextReview.millisecondsSinceEpoch,
+      'interval_days': item.intervalDays,
+      'ease_factor': item.easeFactor,
+    });
+  }
+
+  Future<List<RevisionItem>> listDueRevisions() async {
+    final db = await _database.database;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final rows = await db.query(
+      'revision_schedule',
+      where: 'next_review <= ?',
+      whereArgs: [now],
+      orderBy: 'next_review ASC',
+    );
+    return rows.map(_revisionItemFromRow).toList();
+  }
+
+  Future<void> updateRevisionItem(RevisionItem item) async {
+    final db = await _database.database;
+    await db.update(
+      'revision_schedule',
+      {
+        'next_review': item.nextReview.millisecondsSinceEpoch,
+        'interval_days': item.intervalDays,
+        'ease_factor': item.easeFactor,
+      },
+      where: 'question_id = ?',
+      whereArgs: [item.questionId],
+    );
+  }
+
+  RevisionItem _revisionItemFromRow(Map<String, Object?> row) {
+    return RevisionItem(
+      id: row['id'] as int,
+      questionId: (row['question_id'] as int?) ?? 0,
+      nextReview: DateTime.fromMillisecondsSinceEpoch(
+        (row['next_review'] as int?) ?? 0,
+      ),
+      intervalDays: (row['interval_days'] as int?) ?? 1,
+      easeFactor: ((row['ease_factor'] as num?) ?? 2.5).toDouble(),
     );
   }
 }

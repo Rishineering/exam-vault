@@ -4,6 +4,7 @@ import '../app.dart';
 import '../data/models.dart';
 import '../state/app_state.dart';
 import 'home_screen.dart';
+import 'profile_setup_screen.dart';
 
 /// Login screen — simple offline-first sign in.
 class LoginScreen extends StatefulWidget {
@@ -41,11 +42,20 @@ class _LoginScreenState extends State<LoginScreen> {
       // Offline demo authentication — accepts the demo credential pair.
       if (email == _demoEmail && password == _demoPassword) {
         await state.setOnboardingComplete();
+        await state.loadUserProfile();
         if (!mounted) return;
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-          (route) => false,
-        );
+        // If profile not set up, go to profile setup screen
+        if (!state.isProfileSetup) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const ProfileSetupScreen()),
+            (route) => false,
+          );
+        } else {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const HomeScreen()),
+            (route) => false,
+          );
+        }
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
