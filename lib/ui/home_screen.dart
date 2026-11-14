@@ -16,6 +16,8 @@ import 'syllabus_tracker_screen.dart';
 import 'pyq_explorer_screen.dart';
 import 'create_mock_test_screen.dart';
 import 'analytics_screen.dart';
+import 'bookmarks_screen.dart';
+import 'revision_queue_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -210,10 +212,18 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Revision Queue',
             onTap: () {
               Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Revision queue - coming soon'),
-                ),
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const RevisionQueueScreen()),
+              );
+            },
+          ),
+          _DrawerItem(
+            icon: Icons.bookmark_rounded,
+            label: 'Bookmarks',
+            onTap: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const BookmarksScreen()),
               );
             },
           ),

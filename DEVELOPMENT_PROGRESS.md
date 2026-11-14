@@ -1,28 +1,19 @@
 # ExamVault Development Progress
 
-## Features Being Implemented (Batch 1)
-1. ✅ Subject & Syllabus Coverage Tracker (customizable)
-2. ✅ Previous Year Questions (PYQ) Explorer
-3. ✅ Timed Mock Tests & Practice Mode
-4. Supporting: Exam-Specific Profiles, Performance Analytics, Answer Explanations, Difficulty Tagging, Bookmarking
+## Features Being Implemented (Batch 2)
+1. Answer Explanations UI — view/add EN/HI explanations in question edit sheet + explanation display
+2. Bookmarks / Favorites UI — bookmark list screen + toggle in question rows
+3. Spaced Repetition / Revision Scheduler UI — revision queue screen
 
 ## Status
-- [x] Database schema v5 (new tables)
-- [x] New data models
-- [x] Repository CRUD methods
-- [x] AppState integration
-- [x] Profile setup screen (exam selection during signup)
-- [x] Syllabus tracker screen
-- [x] PYQ explorer screen
-- [x] Mock test create screen
-- [x] Mock test taking screen
-- [x] Mock test results screen
-- [x] Analytics screen
-- [x] Hamburger menu integration (all new items)
+- [x] Answer Explanations UI (explanation field in edit sheet + explanation indicator badge in question table rows)
+- [x] Bookmarks / Favorites UI (BookmarksScreen + star toggle in question table rows)
+- [x] Spaced Repetition / Revision Scheduler UI (RevisionQueueScreen with due items + correct/incorrect review buttons)
+- [x] Hamburger menu integration (Bookmarks, Revision Queue items)
 - [x] QA & testing (analyze clean, 24 tests pass)
 - [ ] Commit & push
 
 ## Notes
-- All features integrated into existing hamburger drawer
-- Exam profile set during login/signup flow
-- No new pub dependencies (using dart:io, sqflite already present)
+- All repository CRUD methods already exist from Batch 1 schema v5
+- No new pub dependencies needed
+- Integrating into existing hamburger drawer

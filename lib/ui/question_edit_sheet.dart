@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../app.dart';
 import '../core/models.dart';
 import '../data/models.dart';
+import '../state/app_state.dart';
 
 /// Opens a bottom sheet that lets the user correct one extracted question.
 ///
@@ -35,6 +37,8 @@ class _QuestionEditSheetState extends State<QuestionEditSheet> {
   late final TextEditingController _text;
   late final TextEditingController _marks;
   late final TextEditingController _options;
+  late final TextEditingController _explanation;
+  String _explanationLanguage = 'en';
 
   String? _error;
 
@@ -53,6 +57,7 @@ class _QuestionEditSheetState extends State<QuestionEditSheet> {
           .map((option) => '${option.label}) ${option.text}')
           .join('\n'),
     );
+    _explanation = TextEditingController();
   }
 
   @override
@@ -62,10 +67,11 @@ class _QuestionEditSheetState extends State<QuestionEditSheet> {
     _text.dispose();
     _marks.dispose();
     _options.dispose();
+    _explanation.dispose();
     super.dispose();
   }
 
-  void _save() {
+  Future<void> _save(BuildContext context) async {
     final text = _text.text.trim();
     if (text.isEmpty) {
       setState(() => _error = 'The question text cannot be empty.');
@@ -91,6 +97,21 @@ class _QuestionEditSheetState extends State<QuestionEditSheet> {
       warnings: const [],
       needsReview: false,
     );
+
+    // Save explanation if provided
+    final explanation = _explanation.text.trim();
+    if (explanation.isNotEmpty) {
+      try {
+        await AppScope.read(context).saveQuestionExplanation(
+          questionId: updated.id,
+          language: _explanationLanguage,
+          explanation: explanation,
+          source: 'user',
+        );
+      } catch (_) {
+        // Non-fatal: explanation save failure shouldn't block question save
+      }
+    }
 
     Navigator.of(context).pop(updated);
   }
@@ -192,6 +213,43 @@ class _QuestionEditSheetState extends State<QuestionEditSheet> {
                   helperText: 'Example: A) Delhi — labels are optional.',
                 ),
               ),
+              const SizedBox(height: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      value: _explanationLanguage,
+                      decoration: const InputDecoration(
+                        labelText: 'Explanation language',
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'en', child: Text('English')),
+                        DropdownMenuItem(value: 'hi', child: Text('हिन्दी')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() => _explanationLanguage = val);
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _explanation,
+                minLines: 3,
+                maxLines: 6,
+                keyboardType: TextInputType.multiline,
+                decoration: InputDecoration(
+                  labelText: 'Answer explanation',
+                  alignLabelWithHint: true,
+                  helperText: _explanationLanguage == 'hi'
+                      ? 'उत्तर की व्याख्या दर्ज करें'
+                      : 'Explain why this answer is correct',
+                ),
+              ),
               if (_error != null) ...[
                 const SizedBox(height: 12),
                 Text(
@@ -283,7 +341,7 @@ class _QuestionEditSheetState extends State<QuestionEditSheet> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: FilledButton.icon(
-                      onPressed: _save,
+                      onPressed: () => _save(context),
                       icon: const Icon(Icons.check_rounded),
                       label: const Text('Save changes'),
                     ),

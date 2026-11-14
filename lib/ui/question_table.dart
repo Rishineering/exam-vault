@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../app.dart';
 import '../data/models.dart';
+import '../state/app_state.dart';
+import 'question_edit_sheet.dart';
 
 /// A horizontally scrollable, spreadsheet-style table of extracted questions.
 ///
@@ -23,10 +26,11 @@ class QuestionTable extends StatelessWidget {
   static const double _sectionWidth = 130;
   static const double _questionWidth = 340;
   static const double _marksWidth = 64;
-  static const double _optionsWidth = 220;
+  static const double _optionsWidth = 164;
   static const double _pageWidth = 56;
   static const double _confidenceWidth = 70;
   static const double _reviewWidth = 72;
+  static const double _actionsWidth = 56;
 
   static const double _totalWidth = _indexWidth +
       _numberWidth +
@@ -36,7 +40,8 @@ class QuestionTable extends StatelessWidget {
       _optionsWidth +
       _pageWidth +
       _confidenceWidth +
-      _reviewWidth;
+      _reviewWidth +
+      _actionsWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -138,6 +143,7 @@ class _TableHeader extends StatelessWidget {
           cell('PAGE', QuestionTable._pageWidth, align: TextAlign.center),
           cell('CONF.', QuestionTable._confidenceWidth, align: TextAlign.center),
           cell('REVIEW', QuestionTable._reviewWidth, align: TextAlign.center),
+          cell('ACTIONS', QuestionTable._actionsWidth, align: TextAlign.center),
         ],
       ),
     );
@@ -272,6 +278,69 @@ class _QuestionRow extends StatelessWidget {
                   ),
                 ),
               ),
+              // Bookmark + explanation actions
+              SizedBox(
+                width: QuestionTable._actionsWidth,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Explanation badge
+                      FutureBuilder<bool>(
+                        future: _hasExplanation(context, question.id),
+                        builder: (context, snapshot) {
+                          final hasExplanation = snapshot.data ?? false;
+                          return Tooltip(
+                            message: hasExplanation
+                                ? 'Explanation available'
+                                : 'Add explanation',
+                            child: IconButton(
+                              icon: Icon(
+                                hasExplanation
+                                    ? Icons.chat_bubble_outline_rounded
+                                    : Icons.chat_bubble_outlined,
+                                size: 16,
+                                color: hasExplanation
+                                    ? scheme.primary
+                                    : scheme.onSurfaceVariant,
+                              ),
+                              onPressed: () {
+                                showQuestionEditSheet(context, question);
+                              },
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 4),
+                      // Bookmark star
+                      FutureBuilder<bool>(
+                        future: _isBookmarked(context, question.id),
+                        builder: (context, snapshot) {
+                          final bookmarked = snapshot.data ?? false;
+                          return Tooltip(
+                            message: bookmarked
+                                ? 'Remove bookmark'
+                                : 'Bookmark',
+                            child: IconButton(
+                              icon: Icon(
+                                bookmarked
+                                    ? Icons.bookmark_rounded
+                                    : Icons.bookmark_border_rounded,
+                                size: 16,
+                                color: bookmarked
+                                    ? scheme.primary
+                                    : scheme.onSurfaceVariant,
+                              ),
+                              onPressed: () => _toggleBookmark(context, question.id),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -282,6 +351,22 @@ class _QuestionRow extends StatelessWidget {
   static String _formatMarks(double value) {
     if (value == value.roundToDouble()) return value.toInt().toString();
     return value.toStringAsFixed(1);
+  }
+
+  static Future<bool> _hasExplanation(BuildContext context, int questionId) async {
+    final state = AppScope.read(context);
+    final explanation = await state.getQuestionExplanation(questionId, 'en');
+    return explanation != null;
+  }
+
+  static Future<bool> _isBookmarked(BuildContext context, int questionId) async {
+    final state = AppScope.read(context);
+    return await state.isQuestionBookmarked(questionId);
+  }
+
+  static Future<void> _toggleBookmark(BuildContext context, int questionId) async {
+    final state = AppScope.read(context);
+    await state.toggleBookmark(questionId);
   }
 }
 

@@ -566,6 +566,45 @@ class AppState extends ChangeNotifier {
     return total;
   }
 
+  // ---------------------------------------------------------------------------
+  // Question Explanations
+  // ---------------------------------------------------------------------------
+
+  Future<QuestionExplanation?> getQuestionExplanation(
+    int questionId,
+    String language,
+  ) async {
+    return _repository.getQuestionExplanation(questionId, language);
+  }
+
+  Future<void> saveQuestionExplanation({
+    required int questionId,
+    required String language,
+    required String explanation,
+    String? source,
+  }) async {
+    final existing = await _repository.getQuestionExplanation(questionId, language);
+    if (existing != null) {
+      await _repository.updateQuestionExplanation(
+        existing.copyWith(
+          language: language,
+          explanation: explanation,
+          source: source,
+        ),
+      );
+    } else {
+      await _repository.insertQuestionExplanation(
+        QuestionExplanation(
+          id: 0,
+          questionId: questionId,
+          language: language,
+          explanation: explanation,
+          source: source,
+        ),
+      );
+    }
+  }
+
   Future<String> writeCsv(PaperDetail detail) async {
     final file = await exporter.writeCsv(detail);
     return file.path;
