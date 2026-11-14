@@ -14,6 +14,10 @@ class PaperRepository {
 
   final AppDatabase _database;
 
+  /// Exposes the underlying database for cross-table operations used by
+  /// services such as question generation.
+  Future<Database> get database async => _database.database;
+
   // ---------------------------------------------------------------------------
   // Writes
   // ---------------------------------------------------------------------------
@@ -398,5 +402,136 @@ class PaperRepository {
     final base = p.basenameWithoutExtension(fileName).trim();
     if (base.isEmpty) return 'Untitled paper';
     return base.replaceAll(RegExp(r'[_\-]+'), ' ').trim();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Generated questions (LLM pipeline output)
+  // ---------------------------------------------------------------------------
+
+  /// Inserts a single generated question and returns its new row id.
+  Future<int> insertGeneratedQuestion(GeneratedQuestion question) async {
+    final db = await _database.database;
+    return await db.insert('generated_questions', {
+      'number': question.number,
+      'text': question.text,
+      'section': question.section,
+      'marks': question.marks,
+      'category': question.category,
+      'confidence': question.confidence,
+      'needs_review': question.needsReview ? 1 : 0,
+      'page_number': question.pageNumber,
+      'options_json': jsonEncode(
+        question.options.map((o) => o.toJson()).toList(),
+      ),
+      'raw_block': question.rawBlock,
+      'source_category': question.sourceCategory,
+      'generation_batch': question.generationBatch,
+      'created_at': question.createdAt.millisecondsSinceEpoch,
+    });
+  }
+
+  /// Returns generated questions, optionally filtered by batch and/or category.
+  Future<List<GeneratedQuestion>> listGeneratedQuestions({
+    String? generationBatch,
+    String? category,
+    int? limit,
+  }) async {
+    final db = await _database.database;
+    final whereClauses = <String>[];
+    final whereArgs = <Object?>[];
+
+    if (generationBatch != null) {
+      whereClauses.add('generation_batch = ?');
+      whereArgs.add(generationBatch);
+    }
+    if (category != null) {
+      whereClauses.add('category = ?');
+      whereArgs.add(category);
+    }
+
+    final rows = await db.query(
+      'generated_questions',
+      columns: [
+        'id',
+        'number',
+        'text',
+        'section',
+        'marks',
+        'category',
+        'confidence',
+        'needs_review',
+        'page_number',
+        'options_json',
+        'raw_block',
+        'source_category',
+        'generation_batch',
+        'created_at',
+      ],
+      where: whereClauses.isNotEmpty ? whereClauses.join(' AND ') : null,
+      whereArgs: whereArgs.isNotEmpty ? whereArgs : null,
+      orderBy: 'created_at DESC, id ASC',
+      limit: limit,
+    );
+    return rows.map(_generatedQuestionFromRow).toList();
+  }
+
+  /// Returns the count of generated questions, optionally filtered.
+  Future<int> countGeneratedQuestions({
+    String? generationBatch,
+    String? category,
+  }) async {
+    final db = await _database.database;
+    final whereClauses = <String>[];
+    final whereArgs = <Object?>[];
+
+    if (generationBatch != null) {
+      whereClauses.add('generation_batch = ?');
+      whereArgs.add(generationBatch);
+    }
+    if (category != null) {
+      whereClauses.add('category = ?');
+      whereArgs.add(category);
+    }
+
+    final rows = await db.query(
+      'generated_questions',
+      columns: ['COUNT(*) AS c'],
+      where: whereClauses.isNotEmpty ? whereClauses.join(' AND ') : null,
+      whereArgs: whereArgs.isNotEmpty ? whereArgs : null,
+    );
+    return Sqflite.firstIntValue(rows) ?? 0;
+  }
+
+  /// Returns every distinct generation batch id, newest first.
+  Future<List<String>> getGeneratedQuestionBatches() async {
+    final db = await _database.database;
+    final rows = await db.query(
+      'generated_questions',
+      columns: ['generation_batch'],
+      distinct: true,
+      orderBy: 'generation_batch DESC',
+    );
+    return rows.map((r) => (r['generation_batch'] as String?) ?? '').toList();
+  }
+
+  GeneratedQuestion _generatedQuestionFromRow(Map<String, Object?> row) {
+    return GeneratedQuestion(
+      id: row['id'] as int,
+      number: (row['number'] as String?) ?? '',
+      text: (row['text'] as String?) ?? '',
+      section: (row['section'] as String?) ?? '',
+      marks: (row['marks'] as num?)?.toDouble(),
+      category: (row['category'] as String?) ?? '',
+      confidence: ((row['confidence'] as num?) ?? 0).toDouble(),
+      needsReview: ((row['needs_review'] as int?) ?? 0) == 1,
+      pageNumber: (row['page_number'] as int?) ?? 1,
+      options: _decodeOptions(row['options_json'] as String?),
+      sourceCategory: (row['source_category'] as String?) ?? '',
+      generationBatch: (row['generation_batch'] as String?) ?? '',
+      createdAt: DateTime.fromMillisecondsSinceEpoch(
+        (row['created_at'] as int?) ?? 0,
+      ),
+      rawBlock: (row['raw_block'] as String?) ?? '',
+    );
   }
 }

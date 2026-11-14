@@ -3,10 +3,11 @@ import 'package:sqflite/sqflite.dart';
 
 /// Owns the SQLite connection and schema.
 ///
-/// Schema v3:
-///   papers        - one row per imported question paper
-///   questions     - one row per extracted question
-///   app_settings  - key/value app settings (e.g. onboarding / login state)
+/// Schema v4:
+///   papers            - one row per imported question paper
+///   questions         - one row per extracted question
+///   app_settings      - key/value app settings
+///   generated_questions - LLM-generated questions stored separately
 class AppDatabase {
   AppDatabase._();
 
@@ -27,7 +28,7 @@ class AppDatabase {
     final path = p.join(directory, 'exam_vault.db');
     return openDatabase(
       path,
-      version: 3,
+      version: 4,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -82,6 +83,30 @@ class AppDatabase {
             value TEXT NOT NULL
           )
         ''');
+        await db.execute('''
+          CREATE TABLE generated_questions (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            number         TEXT    NOT NULL,
+            text           TEXT    NOT NULL,
+            section        TEXT    NOT NULL DEFAULT '',
+            marks          REAL,
+            category       TEXT    NOT NULL DEFAULT '',
+            confidence     REAL    NOT NULL DEFAULT 0,
+            needs_review   INTEGER NOT NULL DEFAULT 1,
+            page_number    INTEGER NOT NULL DEFAULT 1,
+            options_json   TEXT    NOT NULL DEFAULT '[]',
+            raw_block      TEXT    NOT NULL DEFAULT '',
+            source_category TEXT   NOT NULL DEFAULT '',
+            generation_batch TEXT  NOT NULL DEFAULT '',
+            created_at     INTEGER NOT NULL
+          )
+        ''');
+        await db.execute(
+          'CREATE INDEX idx_generated_questions_category ON generated_questions (category)',
+        );
+        await db.execute(
+          'CREATE INDEX idx_generated_questions_batch ON generated_questions (generation_batch)',
+        );
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -96,6 +121,32 @@ class AppDatabase {
               value TEXT NOT NULL
             )
           ''');
+        }
+        if (oldVersion < 4) {
+          await db.execute('''
+            CREATE TABLE generated_questions (
+              id             INTEGER PRIMARY KEY AUTOINCREMENT,
+              number         TEXT    NOT NULL,
+              text           TEXT    NOT NULL,
+              section        TEXT    NOT NULL DEFAULT '',
+              marks          REAL,
+              category       TEXT    NOT NULL DEFAULT '',
+              confidence     REAL    NOT NULL DEFAULT 0,
+              needs_review   INTEGER NOT NULL DEFAULT 1,
+              page_number    INTEGER NOT NULL DEFAULT 1,
+              options_json   TEXT    NOT NULL DEFAULT '[]',
+              raw_block      TEXT    NOT NULL DEFAULT '',
+              source_category TEXT   NOT NULL DEFAULT '',
+              generation_batch TEXT  NOT NULL DEFAULT '',
+              created_at     INTEGER NOT NULL
+            )
+          ''');
+          await db.execute(
+            'CREATE INDEX idx_generated_questions_category ON generated_questions (category)',
+          );
+          await db.execute(
+            'CREATE INDEX idx_generated_questions_batch ON generated_questions (generation_batch)',
+          );
         }
       },
     );

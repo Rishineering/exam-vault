@@ -59,6 +59,10 @@ Notes:
   installed, but this app targets Android only, so it is not required.
 - `flutter doctor` reports the Android toolchain as [✓]. The only remaining
   doctor notice is the optional Linux desktop toolchain.
+- No new packages were added for the LLM question generation pipeline — it
+  uses Dart's built-in `dart:io` (`HttpClient`) for HTTP calls, so no
+  `pubspec.yaml` changes are required. The LLM API key is supplied at runtime
+  (not bundled in the app).
 
 --------------------------------------------------------------------------------
 C. ENVIRONMENT VARIABLES (add to ~/.bashrc or ~/.profile)

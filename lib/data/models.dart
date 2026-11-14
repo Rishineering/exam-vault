@@ -165,3 +165,74 @@ class PaperDetail {
     );
   }
 }
+
+/// An LLM-generated question stored in the `generated_questions` table.
+class GeneratedQuestion {
+  const GeneratedQuestion({
+    required this.id,
+    required this.number,
+    required this.text,
+    required this.section,
+    this.marks,
+    required this.category,
+    required this.confidence,
+    required this.needsReview,
+    required this.pageNumber,
+    required this.options,
+    required this.sourceCategory,
+    required this.generationBatch,
+    required this.createdAt,
+    this.rawBlock = '',
+  });
+
+  final int id;
+  final String number;
+  final String text;
+  final String section;
+  final double? marks;
+  final String category;
+  final double confidence;
+  final bool needsReview;
+  final int pageNumber;
+  final List<ParsedOption> options;
+  final String sourceCategory;
+  final String generationBatch;
+  final DateTime createdAt;
+  final String rawBlock;
+
+  GeneratedQuestion copyWith({
+    int? id,
+    String? number,
+    String? text,
+    String? section,
+    double? marks,
+    bool clearMarks = false,
+    String? category,
+    double? confidence,
+    bool? needsReview,
+    int? pageNumber,
+    List<ParsedOption>? options,
+    String? sourceCategory,
+    String? generationBatch,
+    DateTime? createdAt,
+    String? rawBlock,
+  }) {
+    return GeneratedQuestion(
+      id: id ?? this.id,
+      number: number ?? this.number,
+      text: text ?? this.text,
+      section: section ?? this.section,
+      marks: clearMarks ? null : (marks ?? this.marks),
+      category: category ?? this.category,
+      confidence: confidence ?? this.confidence,
+      needsReview: needsReview ?? this.needsReview,
+      pageNumber: pageNumber ?? this.pageNumber,
+      options: options ?? this.options,
+      sourceCategory: sourceCategory ?? this.sourceCategory,
+      generationBatch: generationBatch ?? this.generationBatch,
+      createdAt: createdAt ?? this.createdAt,
+      rawBlock: rawBlock ?? this.rawBlock,
+    );
+  }
+}
+

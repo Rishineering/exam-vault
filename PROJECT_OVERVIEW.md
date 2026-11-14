@@ -180,11 +180,78 @@ CREATE TABLE app_settings (
 
 CREATE INDEX idx_questions_paper ON questions (paper_id, order_index);
 
-Schema upgraded v1 → v2 → v3 via `ALTER TABLE` / `CREATE TABLE` migrations.
+Schema upgraded v1 → v2 → v3 → v4 via `ALTER TABLE` / `CREATE TABLE` migrations.
 Deleting a paper cascades to its questions.
 
 --------------------------------------------------------------------------------
-7. WELCOME & LOGIN FLOW
+7. LLM QUESTION GENERATION PIPELINE
+--------------------------------------------------------------------------------
+
+A new pipeline collects reference questions from the database, sends them to an
+LLM to generate additional questions, and stores the results in a separate
+`generated_questions` table.
+
+**Flow:**
+1. **Collect references** — Fetch up to 100 existing questions (with their
+   categories) from the `questions` table, ordered by category.
+2. **Build prompt** — Group references by category and construct a prompt that
+   asks the LLM to generate exactly 500 new questions distributed across the
+   same categories in proportion to their reference counts.
+3. **Call LLM** — POST the prompt to a configurable LLM endpoint (default:
+   OpenAI-compatible chat completions) using Dart's built-in `HttpClient`
+   (no extra dependencies). The API key is supplied at runtime via
+   `setLLMApiKey()` — it is **not** bundled in the app.
+4. **Parse response** — Extract a JSON array of question objects from the LLM
+   response (handles both bare arrays and objects containing an array field;
+   strips markdown code fences).
+5. **Store** — Insert the generated questions (capped at 500) into the
+   `generated_questions` table, tagged with a generation batch id.
+
+**Files:**
+- `lib/data/app_database.dart` — Schema v4 adds the `generated_questions` table
+  with indexes on `category` and `generation_batch`.
+- `lib/data/models.dart` — `GeneratedQuestion` model class.
+- `lib/data/paper_repository.dart` — CRUD for `generated_questions`
+  (`insertGeneratedQuestion`, `listGeneratedQuestions`,
+  `countGeneratedQuestions`, `getGeneratedQuestionBatches`).
+- `lib/services/question_generation_service.dart` —
+  `QuestionGenerationPipeline` class implementing the full pipeline.
+- `lib/state/app_state.dart` — `setLLMApiKey()`, `setLLMEndpoint()`,
+  `generateQuestions()`, `getGeneratedQuestions()`, `getGeneratedQuestionCount`,
+  `getGeneratedQuestionBatches()`, plus `isGenerating` /
+  `generationError` / `lastGenerationResult` state.
+
+**New table: `generated_questions`**
+| Column | Type | Notes |
+|--------|------|-------|
+| id | INTEGER PK | Autoincrement |
+| number | TEXT | Question number |
+| text | TEXT | Question text |
+| section | TEXT | Section (e.g. Section A) |
+| marks | REAL | Marks (nullable) |
+| category | TEXT | Category (e.g. History) |
+| confidence | REAL | Confidence score 0.0-1.0 |
+| needs_review | INTEGER | 1 = needs review |
+| page_number | INTEGER | Page number |
+| options_json | TEXT | JSON array of {label, text} |
+| raw_block | TEXT | Raw text block |
+| source_category | TEXT | Category used as generation source |
+| generation_batch | TEXT | Batch id for grouping |
+| created_at | INTEGER | Timestamp ms |
+
+**Usage (API key must be configured first):**
+```dart
+final state = AppScope.of(context);
+state.setLLMApiKey('sk-...'); // key provided later
+final result = await state.generateQuestions();
+// result.generatedCount → up to 500
+```
+
+Until `setLLMApiKey()` is called, `generateQuestions()` throws a clear
+`StateError` so the failure is obvious rather than silent.
+
+--------------------------------------------------------------------------------
+8. WELCOME & LOGIN FLOW
 --------------------------------------------------------------------------------
 
 On first launch (or when `onboarding_complete` is not set), the app opens the
