@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app.dart';
+import '../core/app_strings.dart';
 import '../data/models.dart';
 import '../state/app_state.dart';
 import 'mock_test_screen.dart';
@@ -48,11 +49,15 @@ class _CreateMockTestScreenState extends State<CreateMockTestScreen> {
     super.dispose();
   }
 
-  Future<void> _startTest(AppState state) async {
+  Future<void> _startTest(AppState state, AppText t) async {
     final title = _titleController.text.trim();
     if (title.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a test title')),
+        SnackBar(
+          content: Text(
+            t.isHindi ? 'कृपया एक शीर्षक दर्ज करें' : 'Please enter a test title',
+          ),
+        ),
       );
       return;
     }
@@ -61,7 +66,8 @@ class _CreateMockTestScreenState extends State<CreateMockTestScreen> {
       id: 0,
       title: title,
       examProfile: state.userProfile?.targetExam ?? 'General',
-      subjectFilter: _selectedSubject == 'All Subjects' ? null : _selectedSubject,
+      subjectFilter:
+          _selectedSubject == 'All Subjects' ? null : _selectedSubject,
       topicFilter: null,
       difficultyFilter: _selectedDifficulty == 'All Difficulties'
           ? null
@@ -103,11 +109,11 @@ class _CreateMockTestScreenState extends State<CreateMockTestScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
+    final t = AppText.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Create Mock Test'),
+        title: Text(t.createMockTest),
         centerTitle: false,
       ),
       body: _loadingSubjects
@@ -117,7 +123,7 @@ class _CreateMockTestScreenState extends State<CreateMockTestScreen> {
                 padding: const EdgeInsets.all(16),
                 children: [
                   Text(
-                    'Test Configuration',
+                    t.testConfiguration,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
@@ -125,15 +131,19 @@ class _CreateMockTestScreenState extends State<CreateMockTestScreen> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _titleController,
-                    decoration: const InputDecoration(
-                      labelText: 'Test Title',
-                      hintText: 'e.g. Polity Mock Test 1',
-                      prefixIcon: Icon(Icons.title_rounded),
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: t.testTitle,
+                      hintText: t.isHindi
+                          ? 'उदा. भारतीय राजव्यवस्था मॉक टेस्ट 1'
+                          : 'e.g. Polity Mock Test 1',
+                      prefixIcon: const Icon(Icons.title_rounded),
+                      border: const OutlineInputBorder(),
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'Please enter a title';
+                        return t.isHindi
+                            ? 'कृपया शीर्षक दर्ज करें'
+                            : 'Please enter a title';
                       }
                       return null;
                     },
@@ -142,7 +152,7 @@ class _CreateMockTestScreenState extends State<CreateMockTestScreen> {
 
                   // Subject filter
                   Text(
-                    'Subject',
+                    t.subjectName,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -158,14 +168,16 @@ class _CreateMockTestScreenState extends State<CreateMockTestScreen> {
                     ),
                     value: _selectedSubject,
                     items: [
-                      const DropdownMenuItem(
+                      DropdownMenuItem(
                         value: 'All Subjects',
-                        child: Text('All Subjects'),
+                        child: Text(t.allSubjects),
                       ),
-                      ..._subjects.map((s) => DropdownMenuItem(
-                        value: s.name,
-                        child: Text(s.name),
-                      )),
+                      ..._subjects.map(
+                        (s) => DropdownMenuItem(
+                          value: s.name,
+                          child: Text(s.name),
+                        ),
+                      ),
                     ],
                     onChanged: (val) {
                       if (val != null) {
@@ -177,7 +189,7 @@ class _CreateMockTestScreenState extends State<CreateMockTestScreen> {
 
                   // Difficulty filter
                   Text(
-                    'Difficulty',
+                    t.difficulty,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -192,22 +204,22 @@ class _CreateMockTestScreenState extends State<CreateMockTestScreen> {
                       ),
                     ),
                     value: _selectedDifficulty,
-                    items: const [
+                    items: [
                       DropdownMenuItem(
                         value: 'All Difficulties',
-                        child: Text('All Difficulties'),
+                        child: Text(t.allDifficulties),
                       ),
                       DropdownMenuItem(
                         value: 'Easy',
-                        child: Text('Easy'),
+                        child: Text(t.easy),
                       ),
                       DropdownMenuItem(
                         value: 'Medium',
-                        child: Text('Medium'),
+                        child: Text(t.medium),
                       ),
                       DropdownMenuItem(
                         value: 'Hard',
-                        child: Text('Hard'),
+                        child: Text(t.hard),
                       ),
                     ],
                     onChanged: (val) {
@@ -220,10 +232,9 @@ class _CreateMockTestScreenState extends State<CreateMockTestScreen> {
 
                   // PYQ only toggle
                   ListTile(
-                    title: const Text('Previous Year Questions only'),
-                    subtitle: const Text(
-                      'Include only questions marked as PYQ',
-                    ),
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(t.pyqOnlyToggle),
+                    subtitle: Text(t.pyqOnlySubtitle),
                     trailing: Switch(
                       value: _pyqOnly,
                       onChanged: (val) => setState(() => _pyqOnly = val),
@@ -233,7 +244,7 @@ class _CreateMockTestScreenState extends State<CreateMockTestScreen> {
 
                   // Question count
                   Text(
-                    'Number of Questions',
+                    t.numberOfQuestions,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -245,10 +256,10 @@ class _CreateMockTestScreenState extends State<CreateMockTestScreen> {
                         child: TextFormField(
                           initialValue: _questionCount.toString(),
                           keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Count',
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(
+                          decoration: InputDecoration(
+                            labelText: t.numberOfQuestions,
+                            border: const OutlineInputBorder(),
+                            contentPadding: const EdgeInsets.symmetric(
                               horizontal: 12,
                               vertical: 14,
                             ),
@@ -267,7 +278,7 @@ class _CreateMockTestScreenState extends State<CreateMockTestScreen> {
 
                   // Duration
                   Text(
-                    'Duration (minutes)',
+                    t.durationMinutes,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -279,10 +290,10 @@ class _CreateMockTestScreenState extends State<CreateMockTestScreen> {
                         child: TextFormField(
                           initialValue: _durationMinutes.toString(),
                           keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Minutes',
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(
+                          decoration: InputDecoration(
+                            labelText: t.durationMinutes,
+                            border: const OutlineInputBorder(),
+                            contentPadding: const EdgeInsets.symmetric(
                               horizontal: 12,
                               vertical: 14,
                             ),
@@ -306,12 +317,12 @@ class _CreateMockTestScreenState extends State<CreateMockTestScreen> {
                       onPressed: () {
                         final form = Form.of(context);
                         if (form.validate()) {
-                          _startTest(AppScope.read(context));
+                          _startTest(AppScope.read(context), t);
                         }
                       },
-                      child: const Text(
-                        'Start Test',
-                        style: TextStyle(
+                      child: Text(
+                        t.startTest,
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                         ),

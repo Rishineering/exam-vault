@@ -631,6 +631,19 @@ class AppState extends ChangeNotifier {
     return total;
   }
 
+  /// Daily study minutes and accuracy stats for the last [days] days.
+  Future<List<DailyStudyStat>> getDailyStudyStats({int days = 7}) {
+    return _repository.getDailyStudyStats(days: days);
+  }
+
+  /// Full question-by-question review of a mock test attempt.
+  Future<List<AttemptAnswerReview>> getAttemptReviews(
+    int attemptId, {
+    String language = 'en',
+  }) {
+    return _repository.getAttemptReviews(attemptId, language: language);
+  }
+
   // ---------------------------------------------------------------------------
   // Question Explanations
   // ---------------------------------------------------------------------------

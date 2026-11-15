@@ -25,14 +25,22 @@ void main() {
       const text = AppText('bilingual');
       expect(text.isHindi, isTrue);
       expect(text.home, 'होम');
+      expect(text.performanceAnalytics, 'प्रदर्शन विश्लेषण');
+      expect(text.createMockTest, 'मॉक टेस्ट बनाएँ');
+      expect(text.testResults, 'टेस्ट परिणाम');
+      expect(text.questionReview, 'प्रश्न-वार समीक्षा');
     });
 
-    test('plural helpers include the count', () {
+    test('plural and summary helpers format properly', () {
       const text = AppText('en');
       expect(text.pyqCount(1), '1 PYQ question');
       expect(text.pyqCount(4), '4 PYQ questions');
       expect(text.revisionInterval(1), 'Interval: 1 day');
       expect(text.revisionInterval(3), 'Interval: 3 days');
+      expect(text.scoreSummary(8, 10), 'You scored 8 out of 10');
+
+      const hiText = AppText('hi');
+      expect(hiText.scoreSummary(8, 10), 'आपने 10 में से 8 अंक प्राप्त किए');
     });
   });
 }

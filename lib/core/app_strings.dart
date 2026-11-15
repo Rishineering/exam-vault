@@ -169,4 +169,80 @@ class AppText {
         return medium;
     }
   }
+
+  // --- Analytics -----------------------------------------------------------
+  String get performanceAnalytics =>
+      pick('Performance Analytics', 'प्रदर्शन विश्लेषण');
+  String get overview => pick('Overview', 'अवलोकन');
+  String get overallAccuracy => pick('Overall Accuracy', 'कुल सटीकता');
+  String get totalAttempts => pick('Total Attempts', 'कुल प्रयास');
+  String get studyTime => pick('Study Time', 'अध्ययन समय');
+  String get accuracyBySubject =>
+      pick('Accuracy by Subject', 'विषयवार सटीकता');
+  String get weakAreasTitle =>
+      pick('Weak Areas (Needs Attention)', 'कमज़ोर क्षेत्र (ध्यान दें)');
+  String get studyTimeTrend =>
+      pick('Study Time & Accuracy Trend', 'अध्ययन समय और सटीकता का रुझान');
+  String get noStudyDataYet => pick(
+        'Take a mock test to see your 7-day study trend.',
+        '7-दिवसीय रुझान देखने के लिए एक मॉक टेस्ट दें।',
+      );
+  String get last7Days => pick('Last 7 Days', 'पिछले 7 दिन');
+  String get minutesShort => pick('m', 'मि.');
+  String get hoursShort => pick('h', 'घं.');
+
+  // --- Mock Test & Review ---------------------------------------------------
+  String get createMockTest => pick('Create Mock Test', 'मॉक टेस्ट बनाएँ');
+  String get testConfiguration =>
+      pick('Test Configuration', 'टेस्ट विन्यास');
+  String get testTitle => pick('Test Title', 'टेस्ट का शीर्षक');
+  String get allSubjects => pick('All Subjects', 'सभी विषय');
+  String get allDifficulties => pick('All Difficulties', 'सभी कठिनाई स्तर');
+  String get pyqOnlyToggle =>
+      pick('Previous Year Questions only', 'केवल पिछले वर्षों के प्रश्न');
+  String get pyqOnlySubtitle => pick(
+        'Include only questions marked as PYQ',
+        'केवल PYQ चिह्नित प्रश्नों को शामिल करें',
+      );
+  String get numberOfQuestions =>
+      pick('Number of Questions', 'प्रश्नों की संख्या');
+  String get durationMinutes => pick('Duration (minutes)', 'समय (मिनट)');
+  String get startTest => pick('Start Test', 'टेस्ट शुरू करें');
+  String get testResults => pick('Test Results', 'टेस्ट परिणाम');
+  String get testCompleted => pick('Test Completed', 'टेस्ट पूरा हुआ');
+  String scoreSummary(int score, int total) => pick(
+        'You scored $score out of $total',
+        'आपने $total में से $score अंक प्राप्त किए',
+      );
+  String get correct => pick('Correct', 'सही');
+  String get wrong => pick('Wrong', 'गलत');
+  String get accuracy => pick('Accuracy', 'सटीकता');
+  String get timeTaken => pick('Time Taken', 'लिया गया समय');
+  String get backToHome => pick('Back to Home', 'होम पर वापस');
+  String get questionReview =>
+      pick('Question-by-Question Review', 'प्रश्न-वार समीक्षा');
+  String get yourAnswer => pick('Your answer', 'आपका उत्तर');
+  String get correctAnswer => pick('Correct answer', 'सही उत्तर');
+  String get notAnswered => pick('Not answered', 'अनुत्तरित');
+  String get filterAll => pick('All', 'सभी');
+  String get filterCorrect => pick('Correct', 'सही');
+  String get filterIncorrect => pick('Incorrect', 'गलत');
+  String get solutionExplanation =>
+      pick('Solution & Explanation', 'हल और व्याख्या');
+
+  // --- Syllabus Tracker -----------------------------------------------------
+  String get overallProgress => pick('Overall Progress', 'कुल प्रगति');
+  String get addSubject => pick('Add Subject', 'विषय जोड़ें');
+  String get addTopic =>
+      pick('Add Topic', 'विषय-वस्तु (Topic) जोड़ें');
+  String get subjectName => pick('Subject Name', 'विषय का नाम');
+  String get topicName => pick('Topic Name', 'टॉपिक का नाम');
+  String get noSubjectsTitle =>
+      pick('No subjects added yet', 'अभी तक कोई विषय नहीं जोड़ा गया');
+  String get noSubjectsBody => pick(
+        'Add subjects from your syllabus to track your progress.',
+        'अपनी प्रगति ट्रैक करने के लिए पाठ्यक्रम से विषय जोड़ें।',
+      );
+  String get markCompleted => pick('Completed', 'पूर्ण');
+  String get inProgress => pick('In progress', 'प्रगति पर');
 }

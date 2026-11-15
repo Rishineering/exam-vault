@@ -888,6 +888,50 @@ class PaperRepository {
     return rows.map(_mockTestAttemptFromRow).toList();
   }
 
+  /// Aggregates daily study minutes and mock test accuracy for the last [days] days.
+  Future<List<DailyStudyStat>> getDailyStudyStats({int days = 7}) async {
+    final attempts = await listMockTestAttempts();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    final stats = <DailyStudyStat>[];
+    for (int i = days - 1; i >= 0; i--) {
+      final targetDate = today.subtract(Duration(days: i));
+      final nextDate = targetDate.add(const Duration(days: 1));
+      final dayStart = targetDate.millisecondsSinceEpoch;
+      final dayEnd = nextDate.millisecondsSinceEpoch;
+
+      final dayAttempts = attempts.where((a) {
+        final timestamp = a.startedAt.millisecondsSinceEpoch;
+        return timestamp >= dayStart && timestamp < dayEnd;
+      }).toList();
+
+      int totalMinutes = 0;
+      int totalScore = 0;
+      int totalQuestions = 0;
+
+      for (final a in dayAttempts) {
+        totalMinutes += (a.timeTaken / 60).ceil();
+        totalScore += a.score;
+        totalQuestions += a.total;
+      }
+
+      final accuracy = totalQuestions == 0
+          ? 0.0
+          : (totalScore / totalQuestions) * 100.0;
+
+      stats.add(
+        DailyStudyStat(
+          date: targetDate,
+          studyMinutes: totalMinutes,
+          attemptCount: dayAttempts.length,
+          accuracyPercentage: accuracy,
+        ),
+      );
+    }
+    return stats;
+  }
+
   MockTestAttempt _mockTestAttemptFromRow(Map<String, Object?> row) {
     return MockTestAttempt(
       id: row['id'] as int,
@@ -931,6 +975,39 @@ class PaperRepository {
       orderBy: 'id ASC',
     );
     return rows.map(_attemptAnswerFromRow).toList();
+  }
+
+  /// Detailed review of every question in an attempt, with options and explanation.
+  Future<List<AttemptAnswerReview>> getAttemptReviews(
+    int attemptId, {
+    String language = 'en',
+  }) async {
+    final answers = await listAttemptAnswers(attemptId);
+    final reviews = <AttemptAnswerReview>[];
+    final db = await _database.database;
+
+    for (final answer in answers) {
+      final qRows = await db.query(
+        'questions',
+        where: 'id = ?',
+        whereArgs: [answer.questionId],
+        limit: 1,
+      );
+      if (qRows.isEmpty) continue;
+      final question = _questionFromRow(qRows.first);
+      final explanation = await getQuestionExplanation(
+        answer.questionId,
+        language,
+      );
+      reviews.add(
+        AttemptAnswerReview(
+          answer: answer,
+          question: question,
+          explanation: explanation,
+        ),
+      );
+    }
+    return reviews;
   }
 
   AttemptAnswer _attemptAnswerFromRow(Map<String, Object?> row) {

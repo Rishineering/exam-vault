@@ -667,3 +667,31 @@ class RevisionEntry {
   final QuestionRef question;
 }
 
+/// Aggregated study and test performance stats for a single calendar day.
+class DailyStudyStat {
+  const DailyStudyStat({
+    required this.date,
+    required this.studyMinutes,
+    required this.attemptCount,
+    required this.accuracyPercentage,
+  });
+
+  final DateTime date;
+  final int studyMinutes;
+  final int attemptCount;
+  final double accuracyPercentage;
+}
+
+/// Detailed review of a question answered during a mock test attempt.
+class AttemptAnswerReview {
+  const AttemptAnswerReview({
+    required this.answer,
+    required this.question,
+    this.explanation,
+  });
+
+  final AttemptAnswer answer;
+  final StoredQuestion question;
+  final QuestionExplanation? explanation;
+}
+
