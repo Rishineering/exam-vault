@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../app.dart';
+import '../core/app_strings.dart';
 import '../core/models.dart';
 import '../data/models.dart';
-import '../state/app_state.dart';
 
 /// Opens a bottom sheet that lets the user correct one extracted question.
 ///
@@ -39,6 +39,9 @@ class _QuestionEditSheetState extends State<QuestionEditSheet> {
   late final TextEditingController _options;
   late final TextEditingController _explanation;
   String _explanationLanguage = 'en';
+  String? _correctOption;
+  bool _addToRevision = false;
+  bool _explanationLoaded = false;
 
   String? _error;
 
@@ -58,6 +61,26 @@ class _QuestionEditSheetState extends State<QuestionEditSheet> {
           .join('\n'),
     );
     _explanation = TextEditingController();
+    _correctOption = question.correctOption;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_explanationLoaded) return;
+    _explanationLoaded = true;
+    _loadExistingExplanation();
+  }
+
+  Future<void> _loadExistingExplanation() async {
+    final profileLanguage = AppText.read(context).language;
+    final language = profileLanguage == 'hi' ? 'hi' : 'en';
+    if (!mounted) return;
+    setState(() => _explanationLanguage = language);
+    final existing = await AppScope.read(context)
+        .getQuestionExplanation(widget.question.id, language);
+    if (!mounted || existing == null) return;
+    _explanation.text = existing.explanation;
   }
 
   @override
@@ -93,6 +116,8 @@ class _QuestionEditSheetState extends State<QuestionEditSheet> {
       marks: marks,
       clearMarks: marks == null,
       options: _parseOptions(_options.text),
+      correctOption: _correctOption,
+      clearCorrectOption: _correctOption == null,
       // A manual correction resolves the review flag.
       warnings: const [],
       needsReview: false,
@@ -110,6 +135,14 @@ class _QuestionEditSheetState extends State<QuestionEditSheet> {
         );
       } catch (_) {
         // Non-fatal: explanation save failure shouldn't block question save
+      }
+    }
+
+    if (_addToRevision) {
+      try {
+        await AppScope.read(context).addToRevision(updated.id);
+      } catch (_) {
+        // Non-fatal: revision scheduling failure shouldn't block question save
       }
     }
 
@@ -214,6 +247,29 @@ class _QuestionEditSheetState extends State<QuestionEditSheet> {
                 ),
               ),
               const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: _correctOption ?? '',
+                decoration: const InputDecoration(
+                  labelText: 'Correct answer (optional)',
+                  helperText: 'Used to score mock tests. Choose the right option.',
+                  prefixIcon: Icon(Icons.check_circle_outline_rounded),
+                ),
+                items: const [
+                  DropdownMenuItem(value: '', child: Text('Not set')),
+                  DropdownMenuItem(value: 'A', child: Text('Option A')),
+                  DropdownMenuItem(value: 'B', child: Text('Option B')),
+                  DropdownMenuItem(value: 'C', child: Text('Option C')),
+                  DropdownMenuItem(value: 'D', child: Text('Option D')),
+                  DropdownMenuItem(value: 'E', child: Text('Option E')),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    _correctOption =
+                        (value == null || value.isEmpty) ? null : value;
+                  });
+                },
+              ),
+              const SizedBox(height: 12),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -227,10 +283,15 @@ class _QuestionEditSheetState extends State<QuestionEditSheet> {
                         DropdownMenuItem(value: 'en', child: Text('English')),
                         DropdownMenuItem(value: 'hi', child: Text('हिन्दी')),
                       ],
-                      onChanged: (val) {
-                        if (val != null) {
-                          setState(() => _explanationLanguage = val);
-                        }
+                      onChanged: (val) async {
+                        if (val == null || val == _explanationLanguage) return;
+                        setState(() => _explanationLanguage = val);
+                        final existing = await AppScope.read(context)
+                            .getQuestionExplanation(widget.question.id, val);
+                        if (!mounted) return;
+                        setState(() {
+                          _explanation.text = existing?.explanation ?? '';
+                        });
                       },
                     ),
                   ),
@@ -248,6 +309,22 @@ class _QuestionEditSheetState extends State<QuestionEditSheet> {
                   helperText: _explanationLanguage == 'hi'
                       ? 'उत्तर की व्याख्या दर्ज करें'
                       : 'Explain why this answer is correct',
+                ),
+              ),
+              const SizedBox(height: 6),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                value: _addToRevision,
+                onChanged: (value) => setState(() => _addToRevision = value),
+                title: Text(
+                  AppText.of(context).addToRevision,
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  AppText.of(context).addToRevisionHint,
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: scheme.onSurfaceVariant),
                 ),
               ),
               if (_error != null) ...[

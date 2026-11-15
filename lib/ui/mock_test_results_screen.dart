@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../app.dart';
-import '../state/app_state.dart';
 
 /// Mock test results screen.
 class MockTestResultsScreen extends StatefulWidget {
@@ -130,6 +128,16 @@ class _MockTestResultsScreenState extends State<MockTestResultsScreen> {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Tip: set the correct answer on each question from its edit '
+                'sheet (open the paper and tap the row) for the most accurate '
+                'scoring.',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
               ),
               const SizedBox(height: 32),
               SizedBox(

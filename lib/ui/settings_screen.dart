@@ -1,18 +1,46 @@
 import 'package:flutter/material.dart';
 
-/// Static help, privacy and about information.
-class SettingsScreen extends StatelessWidget {
+import '../app.dart';
+import '../core/app_strings.dart';
+
+/// Static help, privacy and about information, plus the language switch.
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
   static const String version = '1.0.0';
 
   @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool _saving = false;
+
+  Future<void> _setLanguage(String value) async {
+    final state = AppScope.read(context);
+    final profile = state.userProfile;
+    if (profile == null || profile.language == value) return;
+    setState(() => _saving = true);
+    try {
+      await state.updateUserProfile(profile.copyWith(language: value));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppText.read(context).languageSaved)),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final t = AppText.of(context);
+    final language = AppScope.of(context).userProfile?.language ?? 'en';
 
     return Scaffold(
-      appBar: AppBar(title: const Text('About & help')),
+      appBar: AppBar(title: Text(t.aboutHelp)),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [
@@ -57,7 +85,7 @@ class SettingsScreen extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            'Version $version',
+                            'Version ${SettingsScreen.version}',
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: scheme.onPrimary.withValues(alpha: 0.85),
                             ),
@@ -80,6 +108,74 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 18),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: scheme.secondaryContainer,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.language_rounded,
+                          size: 19,
+                          color: scheme.onSecondaryContainer,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        t.languageLabel,
+                        style: theme.textTheme.titleSmall
+                            ?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      const Spacer(),
+                      if (_saving)
+                        const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    t.languageHint,
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: scheme.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      ChoiceChip(
+                        label: Text(t.english),
+                        selected: language == 'en',
+                        onSelected: (_) => _setLanguage('en'),
+                      ),
+                      ChoiceChip(
+                        label: Text(t.hindi),
+                        selected: language == 'hi',
+                        onSelected: (_) => _setLanguage('hi'),
+                      ),
+                      ChoiceChip(
+                        label: const Text('English + हिन्दी'),
+                        selected: language == 'bilingual',
+                        onSelected: (_) => _setLanguage('bilingual'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
           const _InfoCard(
             icon: Icons.auto_awesome_rounded,
             title: 'How extraction works',
@@ -131,7 +227,7 @@ class SettingsScreen extends StatelessWidget {
           const SizedBox(height: 8),
           Center(
             child: Text(
-              'ExamVault $version • Offline-first',
+              'ExamVault ${SettingsScreen.version} • Offline-first',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: scheme.onSurfaceVariant,
               ),

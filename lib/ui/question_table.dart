@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../app.dart';
 import '../data/models.dart';
-import '../state/app_state.dart';
 import 'question_edit_sheet.dart';
 
 /// A horizontally scrollable, spreadsheet-style table of extracted questions.

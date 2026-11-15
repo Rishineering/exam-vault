@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../app.dart';
-import '../data/models.dart';
 import '../state/app_state.dart';
 import 'home_screen.dart';
 import 'profile_setup_screen.dart';

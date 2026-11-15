@@ -103,7 +103,7 @@ class _CreateMockTestScreenState extends State<CreateMockTestScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+
 
     return Scaffold(
       appBar: AppBar(
@@ -305,7 +305,7 @@ class _CreateMockTestScreenState extends State<CreateMockTestScreen> {
                     child: FilledButton(
                       onPressed: () {
                         final form = Form.of(context);
-                        if (form != null && form.validate()) {
+                        if (form.validate()) {
                           _startTest(AppScope.read(context));
                         }
                       },

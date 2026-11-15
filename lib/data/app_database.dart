@@ -38,7 +38,7 @@ class AppDatabase {
     final path = p.join(directory, 'exam_vault.db');
     return openDatabase(
       path,
-      version: 5,
+      version: 6,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -79,6 +79,7 @@ class AppDatabase {
             category TEXT NOT NULL DEFAULT '',
             difficulty TEXT NOT NULL DEFAULT 'Medium',
             importance TEXT NOT NULL DEFAULT 'Medium',
+            correct_option TEXT,
             is_pyq INTEGER NOT NULL DEFAULT 0,
             exam_year INTEGER,
             exam_name TEXT,
@@ -106,6 +107,7 @@ class AppDatabase {
             section        TEXT    NOT NULL DEFAULT '',
             marks          REAL,
             category       TEXT    NOT NULL DEFAULT '',
+            correct_option TEXT,
             confidence     REAL    NOT NULL DEFAULT 0,
             needs_review   INTEGER NOT NULL DEFAULT 1,
             page_number    INTEGER NOT NULL DEFAULT 1,
@@ -283,6 +285,14 @@ class AppDatabase {
           );
           await db.execute(
             'CREATE INDEX idx_generated_questions_batch ON generated_questions (generation_batch)',
+          );
+        }
+        if (oldVersion < 6) {
+          await db.execute(
+            'ALTER TABLE questions ADD COLUMN correct_option TEXT',
+          );
+          await db.execute(
+            'ALTER TABLE generated_questions ADD COLUMN correct_option TEXT',
           );
         }
         if (oldVersion < 5) {

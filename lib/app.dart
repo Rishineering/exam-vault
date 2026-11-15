@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'state/app_state.dart';
 import 'ui/home_screen.dart';
-import 'ui/login_screen.dart';
+
 import 'ui/profile_setup_screen.dart';
 import 'ui/welcome_screen.dart';
 

@@ -16,6 +16,7 @@ class DummyData {
     {
       'number': '1',
       'orderIndex': 0,
+      'correctOption': 'A',
       'text': 'Who was the first President of the United States?',
       'section': 'Section A',
       'marks': 2,
@@ -33,6 +34,7 @@ class DummyData {
     {
       'number': '2',
       'orderIndex': 1,
+      'correctOption': 'B',
       'text': 'In which year did India gain independence?',
       'section': 'Section A',
       'marks': 2,
@@ -50,6 +52,7 @@ class DummyData {
     {
       'number': '3',
       'orderIndex': 2,
+      'correctOption': 'C',
       'text': "Which river is known as the 'Sorrow of Bihar'?",
       'section': 'Section A',
       'marks': 2,
@@ -67,6 +70,7 @@ class DummyData {
     {
       'number': '4',
       'orderIndex': 3,
+      'correctOption': 'C',
       'text': 'What is the capital of Australia?',
       'section': 'Section B',
       'marks': 2,
@@ -84,6 +88,7 @@ class DummyData {
     {
       'number': '5',
       'orderIndex': 4,
+      'correctOption': 'B',
       'text': 'Which is the largest continent by land area?',
       'section': 'Section B',
       'marks': 2,
@@ -101,6 +106,7 @@ class DummyData {
     {
       'number': '6',
       'orderIndex': 5,
+      'correctOption': 'B',
       'text': 'The Sahara Desert is located in which continent?',
       'section': 'Section B',
       'marks': 2,

@@ -53,10 +53,13 @@ class AppState extends ChangeNotifier {
   bool _isLoadingAnalytics = false;
 
   // --- Bookmarks ---
-  List<Bookmark> _bookmarks = const [];
+  List<BookmarkEntry> _bookmarks = const [];
 
   // --- Revisions ---
-  List<RevisionItem> _dueRevisions = const [];
+  List<RevisionEntry> _dueRevisions = const [];
+
+  // --- Explanations ---
+  List<ExplanationEntry> _explanationEntries = const [];
 
   List<PaperRecord> get papers => _papers;
   bool get loading => _loading;
@@ -122,11 +125,14 @@ class AppState extends ChangeNotifier {
   bool get isLoadingAnalytics => _isLoadingAnalytics;
 
   // --- Bookmarks getters ---
-  List<Bookmark> get bookmarks => _bookmarks;
+  List<BookmarkEntry> get bookmarks => _bookmarks;
 
   // --- Revisions getters ---
-  List<RevisionItem> get dueRevisions => _dueRevisions;
+  List<RevisionEntry> get dueRevisions => _dueRevisions;
   int get dueRevisionCount => _dueRevisions.length;
+
+  // --- Explanations getters ---
+  List<ExplanationEntry> get explanationEntries => _explanationEntries;
 
   int get totalQuestions =>
       _papers.fold(0, (sum, paper) => sum + paper.questionCount);
@@ -376,19 +382,19 @@ class AppState extends ChangeNotifier {
   }
 
   /// Recalculates syllabus topic coverage from stored questions.
+  ///
+  /// A question is "covered" once it has been answered in a mock test or
+  /// practice attempt.
   Future<void> recalculateSyllabusCoverage() async {
+    final answered = await _repository.getAnsweredQuestionIds();
     for (final topic in _syllabusTopics) {
       final questionIds = await _repository.getQuestionIdsForTopic(topic.id);
-      final total = questionIds.length;
-      // Count covered as questions that have been answered in an attempt
-      // or have needs_review = 0 (reviewed)
-      int covered = 0;
-      for (final qid in questionIds) {
-        final questions = await _repository.getQuestions(0); // placeholder
-        // We'll compute coverage from attempts instead
-      }
+      final covered = questionIds.where(answered.contains).length;
       await _repository.updateSyllabusTopic(
-        topic.copyWith(totalQuestions: total, coveredQuestions: covered),
+        topic.copyWith(
+          totalQuestions: questionIds.length,
+          coveredQuestions: covered,
+        ),
       );
     }
     await loadSyllabusTopics();
@@ -437,7 +443,7 @@ class AppState extends ChangeNotifier {
     final now = DateTime.now();
     final percentage = total == 0 ? 0.0 : (score / total) * 100;
 
-    await _repository.insertMockTestAttempt(
+    await _repository.updateMockTestAttempt(
       MockTestAttempt(
         id: attemptId,
         testId: _currentAttempt?.testId ?? 0,
@@ -450,17 +456,23 @@ class AppState extends ChangeNotifier {
       ),
     );
 
-    // Save all answers
+    // Save all answers and schedule wrong ones for revision.
     final batch = <Future<void>>[];
     for (final answer in answers) {
       batch.add(_repository.insertAttemptAnswer(answer));
 
-      // Update revision schedule based on correctness
-      if (answer.isCorrect) {
-        // Increase interval (easy)
-        // For now, just mark as reviewed
-      } else {
-        // Decrease interval (hard, review soon)
+      if (!answer.isCorrect) {
+        batch.add(
+          _repository.upsertRevisionItem(
+            RevisionItem(
+              id: 0,
+              questionId: answer.questionId,
+              nextReview: now,
+              intervalDays: 1,
+              easeFactor: 2.5,
+            ),
+          ),
+        );
       }
     }
     await Future.wait(batch);
@@ -476,7 +488,7 @@ class AppState extends ChangeNotifier {
   // ---------------------------------------------------------------------------
 
   Future<void> loadBookmarks() async {
-    _bookmarks = await _repository.listBookmarks();
+    _bookmarks = await _repository.listBookmarkEntries();
     notifyListeners();
   }
 
@@ -505,13 +517,66 @@ class AppState extends ChangeNotifier {
   // ---------------------------------------------------------------------------
 
   Future<void> loadDueRevisions() async {
-    _dueRevisions = await _repository.listDueRevisions();
+    _dueRevisions = await _repository.listDueRevisionEntries();
     notifyListeners();
   }
 
   Future<void> updateRevisionSchedule(RevisionItem item) async {
     await _repository.updateRevisionItem(item);
     await loadDueRevisions();
+  }
+
+  /// Adds a question to the spaced-repetition queue, due immediately.
+  Future<void> addToRevision(int questionId, {int intervalDays = 1}) async {
+    await _repository.insertRevisionItem(
+      RevisionItem(
+        id: 0,
+        questionId: questionId,
+        nextReview: DateTime.now(),
+        intervalDays: intervalDays,
+        easeFactor: 2.5,
+      ),
+    );
+    await loadDueRevisions();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Explanations
+  // ---------------------------------------------------------------------------
+
+  /// Loads every stored explanation, optionally filtered by [language].
+  Future<void> loadExplanationEntries({String? language}) async {
+    _explanationEntries = await _repository.listExplanationEntries(
+      language: language,
+    );
+    notifyListeners();
+  }
+
+  /// Loads previous-year questions (flagged or with an exam year).
+  Future<List<StoredQuestion>> getPyqQuestions() {
+    return _repository.listPyqQuestions();
+  }
+
+  /// Every stored question, useful for building mock-test pools.
+  Future<List<StoredQuestion>> getAllQuestions() {
+    return _repository.listAllQuestions();
+  }
+
+  /// Looks up a mock test by id.
+  Future<MockTest?> getMockTest(int testId) {
+    return _repository.getMockTest(testId);
+  }
+
+  /// Updates an existing explanation and reloads the cached list.
+  Future<void> updateExplanation(QuestionExplanation explanation) async {
+    await _repository.updateQuestionExplanation(explanation);
+    await loadExplanationEntries();
+  }
+
+  /// Deletes an explanation by row id and reloads the cached list.
+  Future<void> deleteExplanation(int explanationId) async {
+    await _repository.deleteQuestionExplanation(explanationId);
+    await loadExplanationEntries();
   }
 
   // ---------------------------------------------------------------------------

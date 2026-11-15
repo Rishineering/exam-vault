@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../app.dart';
+import '../core/app_strings.dart';
 import '../data/models.dart';
-import '../state/app_state.dart';
 import 'paper_screen.dart';
 
-/// Previous Year Questions (PYQ) Explorer screen.
+/// Previous-year question explorer with year, difficulty and text filters.
 class PYQExplorerScreen extends StatefulWidget {
   const PYQExplorerScreen({super.key});
 
@@ -14,19 +14,15 @@ class PYQExplorerScreen extends StatefulWidget {
 }
 
 class _PYQExplorerScreenState extends State<PYQExplorerScreen> {
-  List<StoredQuestion> _filteredQuestions = [];
+  final TextEditingController _searchController = TextEditingController();
+
+  List<StoredQuestion> _allQuestions = const [];
+  List<StoredQuestion> _filteredQuestions = const [];
   bool _loading = true;
 
   String _selectedYear = 'All';
   String _selectedDifficulty = 'All';
   String _searchQuery = '';
-
-  final TextEditingController _searchController = TextEditingController();
-
-  static const List<String> _years = [
-    'All', '2025', '2024', '2023', '2022', '2021', '2020',
-  ];
-  static const List<String> _difficulties = ['All', 'Easy', 'Medium', 'Hard'];
 
   @override
   void initState() {
@@ -41,36 +37,73 @@ class _PYQExplorerScreenState extends State<PYQExplorerScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = false);
-    _applyFilters();
-  }
-
-  void _applyFilters() {
+    final questions = await AppScope.read(context).getPyqQuestions();
+    if (!mounted) return;
     setState(() {
-      _filteredQuestions = [];
+      _allQuestions = questions;
+      _loading = false;
+      _applyFilters();
     });
   }
 
-  Widget _buildYearFilter(BuildContext context, ThemeData theme) {
+  List<String> get _years {
+    final values = <String>{'All'};
+    for (final question in _allQuestions) {
+      final year = question.examYear;
+      if (year != null) values.add('$year');
+    }
+    final sorted = values.where((y) => y != 'All').toList()
+      ..sort((a, b) => b.compareTo(a));
+    return ['All', ...sorted];
+  }
+
+  void _applyFilters() {
+    final query = _searchQuery.trim().toLowerCase();
+    _filteredQuestions = _allQuestions.where((question) {
+      if (_selectedYear != 'All' &&
+          '${question.examYear ?? ''}' != _selectedYear) {
+        return false;
+      }
+      if (_selectedDifficulty != 'All' &&
+          question.difficulty.toLowerCase() !=
+              _selectedDifficulty.toLowerCase()) {
+        return false;
+      }
+      if (query.isEmpty) return true;
+      return question.text.toLowerCase().contains(query) ||
+          question.number.toLowerCase().contains(query) ||
+          question.section.toLowerCase().contains(query);
+    }).toList();
+  }
+
+  Widget _buildYearFilter(ThemeData theme, AppText t) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 12),
+          padding: const EdgeInsets.only(left: 12, top: 8),
           child: Text(
-            'Year:',
-            style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+            '${t.year}:',
+            style: theme.textTheme.bodySmall
+                ?.copyWith(fontWeight: FontWeight.w600),
           ),
         ),
         const SizedBox(width: 8),
         Expanded(
           child: Wrap(
             spacing: 6,
-            children: _years.map((y) {
-              final selected = _selectedYear == y;
+            runSpacing: 4,
+            children: _years.map((year) {
+              final selected = _selectedYear == year;
               return ChoiceChip(
-                label: Text(y),
+                label: Text(year == 'All' ? t.all : year),
                 selected: selected,
-                onSelected: (_) => setState(() => _selectedYear = y),
+                onSelected: (_) {
+                  setState(() {
+                    _selectedYear = year;
+                    _applyFilters();
+                  });
+                },
               );
             }).toList(),
           ),
@@ -79,26 +112,40 @@ class _PYQExplorerScreenState extends State<PYQExplorerScreen> {
     );
   }
 
-  Widget _buildDifficultyFilter(BuildContext context, ThemeData theme) {
+  Widget _buildDifficultyFilter(ThemeData theme, AppText t) {
+    final difficulties = <String>[
+      'All',
+      ...{for (final q in _allQuestions) q.difficulty}
+    ];
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 12),
+          padding: const EdgeInsets.only(left: 12, top: 8),
           child: Text(
-            'Difficulty:',
-            style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+            '${t.difficulty}:',
+            style: theme.textTheme.bodySmall
+                ?.copyWith(fontWeight: FontWeight.w600),
           ),
         ),
         const SizedBox(width: 8),
         Expanded(
           child: Wrap(
             spacing: 6,
-            children: _difficulties.map((d) {
-              final selected = _selectedDifficulty == d;
+            runSpacing: 4,
+            children: difficulties.map((difficulty) {
+              final selected = _selectedDifficulty == difficulty;
+              final label =
+                  difficulty == 'All' ? t.all : t.difficultyLabel(difficulty);
               return ChoiceChip(
-                label: Text(d),
+                label: Text(label),
                 selected: selected,
-                onSelected: (_) => setState(() => _selectedDifficulty = d),
+                onSelected: (_) {
+                  setState(() {
+                    _selectedDifficulty = difficulty;
+                    _applyFilters();
+                  });
+                },
               );
             }).toList(),
           ),
@@ -107,25 +154,31 @@ class _PYQExplorerScreenState extends State<PYQExplorerScreen> {
     );
   }
 
-  Widget _buildSearchField(BuildContext context, ThemeData theme) {
+  Widget _buildSearchField(AppText t) {
     return TextField(
       controller: _searchController,
       decoration: InputDecoration(
-        hintText: 'Search questions...',
+        hintText: t.searchQuestionsHint,
         prefixIcon: const Icon(Icons.search_rounded),
-        suffixIcon: _searchQuery.isNotEmpty
-            ? IconButton(
-                icon: const Icon(Icons.clear),
+        suffixIcon: _searchQuery.isEmpty
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.clear_rounded),
                 onPressed: () {
                   _searchController.clear();
-                  setState(() => _searchQuery = '');
+                  setState(() {
+                    _searchQuery = '';
+                    _applyFilters();
+                  });
                 },
-              )
-            : null,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              ),
       ),
-      onChanged: (val) => setState(() => _searchQuery = val),
+      onChanged: (value) {
+        setState(() {
+          _searchQuery = value;
+          _applyFilters();
+        });
+      },
     );
   }
 
@@ -133,9 +186,10 @@ class _PYQExplorerScreenState extends State<PYQExplorerScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final t = AppText.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('PYQ Explorer'), centerTitle: false),
+      appBar: AppBar(title: Text(t.pyqExplorer), centerTitle: false),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : Column(
@@ -145,75 +199,48 @@ class _PYQExplorerScreenState extends State<PYQExplorerScreen> {
                   color: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
                   child: Column(
                     children: [
-                      _buildYearFilter(context, theme),
+                      _buildYearFilter(theme, t),
+                      const SizedBox(height: 6),
+                      _buildDifficultyFilter(theme, t),
                       const SizedBox(height: 10),
-                      _buildDifficultyFilter(context, theme),
-                      const SizedBox(height: 10),
-                      _buildSearchField(context, theme),
+                      _buildSearchField(t),
                     ],
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                  child: Text(
-                    '${_filteredQuestions.length} PYQ question${_filteredQuestions.length == 1 ? '' : 's'}',
-                    style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      t.pyqCount(_filteredQuestions.length),
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: scheme.onSurfaceVariant),
+                    ),
                   ),
                 ),
                 Expanded(
                   child: _filteredQuestions.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.history_rounded, size: 64, color: scheme.onSurfaceVariant),
-                              const SizedBox(height: 16),
-                              Text(
-                                'No PYQ questions found',
-                                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Import papers with PYQ questions or mark questions as PYQ from the edit sheet.',
-                                style: theme.textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _filteredQuestions.length,
-                          itemBuilder: (_, i) {
-                            final q = _filteredQuestions[i];
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 10),
-                              child: ListTile(
-                                leading: Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(color: scheme.primaryContainer, borderRadius: BorderRadius.circular(10)),
-                                  child: Center(child: Text(q.number, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16))),
-                                ),
-                                title: Text(q.text, maxLines: 2, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const SizedBox(height: 4),
-                                    Row(
-                                      children: [
-                                        if (q.examYear != null) _PyqChip(label: '${q.examYear}', icon: Icons.date_range_rounded),
-                                        if (q.examName != null && q.examName!.isNotEmpty) _PyqChip(label: q.examName!, icon: Icons.school_rounded),
-                                        _PyqChip(label: q.difficulty, icon: Icons.label_rounded),
-                                      ],
+                      ? _EmptyPyq(t: t)
+                      : RefreshIndicator(
+                          onRefresh: _load,
+                          child: ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: _filteredQuestions.length,
+                            itemBuilder: (_, index) {
+                              final question = _filteredQuestions[index];
+                              return _PyqCard(
+                                question: question,
+                                t: t,
+                                onTap: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => PaperScreen(
+                                      paperId: question.paperId,
                                     ),
-                                  ],
+                                  ),
                                 ),
-                                trailing: const Icon(Icons.chevron_right_rounded),
-                                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PaperScreen(paperId: q.paperId))),
-                              ),
-                            );
-                          },
+                              );
+                            },
+                          ),
                         ),
                 ),
               ],
@@ -222,24 +249,154 @@ class _PYQExplorerScreenState extends State<PYQExplorerScreen> {
   }
 }
 
-class _PyqChip extends StatelessWidget {
-  final String label;
-  final IconData icon;
+class _EmptyPyq extends StatelessWidget {
+  const _EmptyPyq({required this.t});
 
-  const _PyqChip({required this.label, required this.icon});
+  final AppText t;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(right: 6),
-      child: Chip(
-        avatar: Icon(icon, size: 16, color: theme.colorScheme.primary),
-        label: Text(label, style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600, fontSize: 11)),
-        backgroundColor: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        visualDensity: VisualDensity.compact,
+    final scheme = theme.colorScheme;
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(32),
+      children: [
+        const SizedBox(height: 56),
+        Icon(
+          Icons.history_rounded,
+          size: 64,
+          color: scheme.onSurfaceVariant,
+        ),
+        const SizedBox(height: 16),
+        Text(
+          t.pyqNoResults,
+          textAlign: TextAlign.center,
+          style:
+              theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          t.pyqNoResultsBody,
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodyMedium
+              ?.copyWith(color: scheme.onSurfaceVariant),
+        ),
+      ],
+    );
+  }
+}
+
+class _PyqCard extends StatelessWidget {
+  const _PyqCard({
+    required this.question,
+    required this.t,
+    required this.onTap,
+  });
+
+  final StoredQuestion question;
+  final AppText t;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: scheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Center(
+                  child: Text(
+                    question.number,
+                    style: TextStyle(
+                      color: scheme.onPrimaryContainer,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      question.text,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium
+                          ?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        if (question.examYear != null)
+                          _PyqChip(
+                            label: '${question.examYear}',
+                            icon: Icons.date_range_rounded,
+                          ),
+                        if ((question.examName ?? '').isNotEmpty)
+                          _PyqChip(
+                            label: question.examName!,
+                            icon: Icons.school_rounded,
+                          ),
+                        _PyqChip(
+                          label: t.difficultyLabel(question.difficulty),
+                          icon: Icons.label_rounded,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded),
+            ],
+          ),
+        ),
       ),
+    );
+  }
+}
+
+class _PyqChip extends StatelessWidget {
+  const _PyqChip({required this.label, required this.icon});
+
+  final String label;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Chip(
+      avatar: Icon(icon, size: 16, color: theme.colorScheme.primary),
+      label: Text(
+        label,
+        style: theme.textTheme.bodySmall
+            ?.copyWith(fontWeight: FontWeight.w600, fontSize: 11),
+      ),
+      backgroundColor:
+          theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
     );
   }
 }

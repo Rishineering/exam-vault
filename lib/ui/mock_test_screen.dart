@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 
 import '../app.dart';
 import '../data/models.dart';
-import '../state/app_state.dart';
 import 'mock_test_results_screen.dart';
 
 /// Mock test taking screen with timer.
@@ -47,34 +46,41 @@ class _MockTestScreenState extends State<MockTestScreen> {
 
   Future<void> _loadQuestions() async {
     final state = AppScope.read(context);
-    final genQuestions = await state.getGeneratedQuestions(
-      limit: widget.questionCount,
-    );
-    final allQuestions = genQuestions.map((gq) => StoredQuestion(
-      id: gq.id,
-      paperId: 0,
-      number: gq.number,
-      orderIndex: 0,
-      text: gq.text,
-      section: gq.section,
-      marks: gq.marks,
-      options: gq.options,
-      pageNumber: gq.pageNumber,
-      category: gq.category,
-      difficulty: 'Medium',
-      importance: 'Medium',
-      isPyq: false,
-      examYear: null,
-      examName: null,
-      confidence: gq.confidence,
-      needsReview: gq.needsReview,
-      warnings: const [],
-      rawBlock: gq.rawBlock,
-    )).toList();
+    final test = await state.getMockTest(widget.testId);
+
+    var pool = test?.isPyqOnly == true
+        ? await state.getPyqQuestions()
+        : await state.getAllQuestions();
+
+    if (test != null) {
+      final subject = test.subjectFilter;
+      if (subject != null && subject.isNotEmpty) {
+        pool = pool
+            .where((q) => q.category.toLowerCase() == subject.toLowerCase())
+            .toList();
+      }
+      final difficulty = test.difficultyFilter;
+      if (difficulty != null && difficulty.isNotEmpty) {
+        pool = pool
+            .where(
+              (q) => q.difficulty.toLowerCase() == difficulty.toLowerCase(),
+            )
+            .toList();
+      }
+    }
+
+    // Mock tests are objective: keep only rows that have answer options.
+    pool = pool.where((question) => question.options.isNotEmpty).toList();
+    // Prefer objective questions when a test mixes MCQ and subjective rows.
+    pool = [...pool]..sort((a, b) {
+        final aScore = a.options.isNotEmpty ? 1 : 0;
+        final bScore = b.options.isNotEmpty ? 1 : 0;
+        return bScore.compareTo(aScore);
+      });
 
     if (!mounted) return;
     setState(() {
-      _questions = allQuestions.take(widget.questionCount).toList();
+      _questions = pool.take(widget.questionCount).toList();
       _loading = false;
     });
     if (_questions.isNotEmpty) {
@@ -123,10 +129,7 @@ class _MockTestScreenState extends State<MockTestScreen> {
 
     int score = 0;
     for (final q in _questions) {
-      final answer = _userAnswers[q.id];
-      if (answer != null && answer.isNotEmpty) {
-        score++;
-      }
+      if (_isAnswerCorrect(q)) score++;
     }
 
     final answers = _questions.map((q) {
@@ -135,8 +138,7 @@ class _MockTestScreenState extends State<MockTestScreen> {
         attemptId: widget.attemptId,
         questionId: q.id,
         userAnswer: _userAnswers[q.id],
-        isCorrect: _userAnswers[q.id] != null &&
-            _userAnswers[q.id]!.isNotEmpty,
+        isCorrect: _isAnswerCorrect(q),
         timeSpent: _timeSpent[q.id] ?? 0,
       );
     }).toList();
@@ -165,6 +167,14 @@ class _MockTestScreenState extends State<MockTestScreen> {
         ),
       ),
     );
+  }
+
+  bool _isAnswerCorrect(StoredQuestion question) {
+    final answer = _userAnswers[question.id]?.trim().toUpperCase();
+    final correct = question.correctOption?.trim().toUpperCase();
+    if (answer == null || answer.isEmpty) return false;
+    if (correct == null || correct.isEmpty) return false;
+    return answer == correct;
   }
 
   void _selectAnswer(String answer) {

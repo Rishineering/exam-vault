@@ -93,6 +93,7 @@ class PaperRepository {
           'text': question.text,
           'marks': question.marks,
           'options': jsonEncode(question.options.map((o) => o.toJson()).toList()),
+          'correct_option': question.correctOption,
           'warnings': jsonEncode(question.warnings),
           // A manual edit means the user has reviewed this row.
           'needs_review': 0,
@@ -184,6 +185,16 @@ class PaperRepository {
       where: 'paper_id = ?',
       whereArgs: [paperId],
       orderBy: 'order_index ASC, id ASC',
+    );
+    return rows.map(_questionFromRow).toList();
+  }
+
+  /// Returns every stored question, ordered by paper and position.
+  Future<List<StoredQuestion>> listAllQuestions() async {
+    final db = await _database.database;
+    final rows = await db.query(
+      'questions',
+      orderBy: 'paper_id ASC, order_index ASC, id ASC',
     );
     return rows.map(_questionFromRow).toList();
   }
@@ -290,6 +301,7 @@ class PaperRepository {
           ),
           'page_number': q.pageNumber,
           'category': raw['category'] as String,
+          'correct_option': raw['correctOption'] as String?,
           'confidence': q.confidence,
           'needs_review': q.needsReview ? 1 : 0,
           'warnings': jsonEncode(q.warnings),
@@ -354,6 +366,7 @@ class PaperRepository {
       category: (row['category'] as String?) ?? '',
       difficulty: (row['difficulty'] as String?) ?? 'Medium',
       importance: (row['importance'] as String?) ?? 'Medium',
+      correctOption: row['correct_option'] as String?,
       isPyq: ((row['is_pyq'] as int?) ?? 0) == 1,
       examYear: (row['exam_year'] as int?),
       examName: (row['exam_name'] as String?),
@@ -842,6 +855,22 @@ class PaperRepository {
     });
   }
 
+  Future<void> updateMockTestAttempt(MockTestAttempt attempt) async {
+    final db = await _database.database;
+    await db.update(
+      'mock_test_attempts',
+      {
+        'score': attempt.score,
+        'total': attempt.total,
+        'percentage': attempt.percentage,
+        'time_taken': attempt.timeTaken,
+        'completed_at': attempt.completedAt?.millisecondsSinceEpoch,
+      },
+      where: 'id = ?',
+      whereArgs: [attempt.id],
+    );
+  }
+
   Future<List<MockTestAttempt>> listMockTestAttempts({int? testId}) async {
     final db = await _database.database;
     final whereClauses = <String>[];
@@ -872,7 +901,7 @@ class PaperRepository {
       ),
       completedAt: (row['completed_at'] as int?) != null
           ? DateTime.fromMillisecondsSinceEpoch(
-              (row['completed_at'] as int)!,
+              row['completed_at'] as int,
             )
           : null,
     );
@@ -958,6 +987,15 @@ class PaperRepository {
     );
   }
 
+  Future<void> deleteQuestionExplanation(int explanationId) async {
+    final db = await _database.database;
+    await db.delete(
+      'question_explanations',
+      where: 'id = ?',
+      whereArgs: [explanationId],
+    );
+  }
+
   QuestionExplanation _questionExplanationFromRow(Map<String, Object?> row) {
     return QuestionExplanation(
       id: row['id'] as int,
@@ -965,6 +1003,175 @@ class PaperRepository {
       language: (row['language'] as String?) ?? 'en',
       explanation: (row['explanation'] as String?) ?? '',
       source: (row['source'] as String?),
+    );
+  }
+
+  /// Explanations joined with their question, newest first.
+  ///
+  /// [language] narrows the result to one language (`en` / `hi`); pass `null`
+  /// for every language.
+  Future<List<ExplanationEntry>> listExplanationEntries({
+    String? language,
+  }) async {
+    final db = await _database.database;
+    final where = language == null ? '' : 'WHERE e.language = ?';
+    final args = language == null ? <Object?>[] : <Object?>[language];
+    final rows = await db.rawQuery(
+      '''
+      SELECT
+        e.id AS e_id, e.question_id AS e_question_id, e.language AS e_language,
+        e.explanation AS e_explanation, e.source AS e_source,
+        q.id AS q_id, q.paper_id AS q_paper_id, q.number AS q_number,
+        q.text AS q_text, q.section AS q_section, q.options AS q_options,
+        q.difficulty AS q_difficulty, q.importance AS q_importance,
+        q.correct_option AS q_correct_option,
+        q.is_pyq AS q_is_pyq, q.exam_year AS q_exam_year,
+        q.exam_name AS q_exam_name, q.marks AS q_marks
+      FROM question_explanations e
+      JOIN questions q ON q.id = e.question_id
+      $where
+      ORDER BY e.id DESC
+      ''',
+      args,
+    );
+    return rows.map((row) {
+      return ExplanationEntry(
+        explanation: QuestionExplanation(
+          id: (row['e_id'] as int?) ?? 0,
+          questionId: (row['e_question_id'] as int?) ?? 0,
+          language: (row['e_language'] as String?) ?? 'en',
+          explanation: (row['e_explanation'] as String?) ?? '',
+          source: row['e_source'] as String?,
+        ),
+        question: _questionRefFromRow(row),
+      );
+    }).toList();
+  }
+
+  /// Bookmarks joined with their question, newest bookmark first.
+  Future<List<BookmarkEntry>> listBookmarkEntries() async {
+    final db = await _database.database;
+    final rows = await db.rawQuery('''
+      SELECT
+        b.id AS b_id, b.question_id AS b_question_id,
+        b.created_at AS b_created_at,
+        q.id AS q_id, q.paper_id AS q_paper_id, q.number AS q_number,
+        q.text AS q_text, q.section AS q_section, q.options AS q_options,
+        q.difficulty AS q_difficulty, q.importance AS q_importance,
+        q.correct_option AS q_correct_option,
+        q.is_pyq AS q_is_pyq, q.exam_year AS q_exam_year,
+        q.exam_name AS q_exam_name, q.marks AS q_marks
+      FROM bookmarks b
+      JOIN questions q ON q.id = b.question_id
+      ORDER BY b.created_at DESC
+    ''');
+    return rows.map((row) {
+      return BookmarkEntry(
+        bookmark: Bookmark(
+          id: (row['b_id'] as int?) ?? 0,
+          questionId: (row['b_question_id'] as int?) ?? 0,
+          createdAt: DateTime.fromMillisecondsSinceEpoch(
+            (row['b_created_at'] as int?) ?? 0,
+          ),
+        ),
+        question: _questionRefFromRow(row),
+      );
+    }).toList();
+  }
+
+  /// Revision items due now, joined with their question, most overdue first.
+  Future<List<RevisionEntry>> listDueRevisionEntries() async {
+    final db = await _database.database;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final rows = await db.rawQuery(
+      '''
+      SELECT
+        r.id AS r_id, r.question_id AS r_question_id,
+        r.next_review AS r_next_review, r.interval_days AS r_interval_days,
+        r.ease_factor AS r_ease_factor,
+        q.id AS q_id, q.paper_id AS q_paper_id, q.number AS q_number,
+        q.text AS q_text, q.section AS q_section, q.options AS q_options,
+        q.difficulty AS q_difficulty, q.importance AS q_importance,
+        q.correct_option AS q_correct_option,
+        q.is_pyq AS q_is_pyq, q.exam_year AS q_exam_year,
+        q.exam_name AS q_exam_name, q.marks AS q_marks
+      FROM revision_schedule r
+      JOIN questions q ON q.id = r.question_id
+      WHERE r.next_review <= ?
+      ORDER BY r.next_review ASC
+      ''',
+      [now],
+    );
+    return rows.map((row) {
+      return RevisionEntry(
+        item: RevisionItem(
+          id: (row['r_id'] as int?) ?? 0,
+          questionId: (row['r_question_id'] as int?) ?? 0,
+          nextReview: DateTime.fromMillisecondsSinceEpoch(
+            (row['r_next_review'] as int?) ?? 0,
+          ),
+          intervalDays: (row['r_interval_days'] as int?) ?? 1,
+          easeFactor: ((row['r_ease_factor'] as num?) ?? 2.5).toDouble(),
+        ),
+        question: _questionRefFromRow(row),
+      );
+    }).toList();
+  }
+
+  /// Every question that belongs to a previous-year paper.
+  ///
+  /// A question counts as a PYQ when it is flagged `is_pyq`, or when either
+  /// the question or its paper carries an exam year.
+  Future<List<StoredQuestion>> listPyqQuestions() async {
+    final db = await _database.database;
+    final rows = await db.rawQuery('''
+      SELECT q.*, p.exam_year AS paper_exam_year,
+             p.exam_name AS paper_exam_name
+      FROM questions q
+      JOIN papers p ON p.id = q.paper_id
+      WHERE q.is_pyq = 1
+         OR q.exam_year IS NOT NULL
+         OR p.exam_year IS NOT NULL
+      ORDER BY COALESCE(q.exam_year, p.exam_year) DESC,
+               q.paper_id ASC, q.order_index ASC
+    ''');
+    return rows.map((row) {
+      final question = _questionFromRow(row);
+      return question.copyWith(
+        examYear: question.examYear ??
+            (row['paper_exam_year'] as int?),
+        examName: question.examName ??
+            (row['paper_exam_name'] as String?),
+        isPyq: true,
+      );
+    }).toList();
+  }
+
+  /// Ids of every question that has at least one recorded attempt answer.
+  Future<Set<int>> getAnsweredQuestionIds() async {
+    final db = await _database.database;
+    final rows = await db.query(
+      'attempt_answers',
+      columns: ['question_id'],
+      distinct: true,
+    );
+    return rows.map((row) => (row['question_id'] as int?) ?? 0).toSet();
+  }
+
+  QuestionRef _questionRefFromRow(Map<String, Object?> row) {
+    return QuestionRef(
+      id: (row['q_id'] as int?) ?? 0,
+      paperId: (row['q_paper_id'] as int?) ?? 0,
+      number: (row['q_number'] as String?) ?? '',
+      text: (row['q_text'] as String?) ?? '',
+      section: (row['q_section'] as String?) ?? '',
+      options: _decodeOptions(row['q_options'] as String?),
+      difficulty: (row['q_difficulty'] as String?) ?? 'Medium',
+      importance: (row['q_importance'] as String?) ?? 'Medium',
+      isPyq: ((row['q_is_pyq'] as int?) ?? 0) == 1,
+      examYear: row['q_exam_year'] as int?,
+      examName: row['q_exam_name'] as String?,
+      marks: (row['q_marks'] as num?)?.toDouble(),
     );
   }
 
@@ -1022,6 +1229,22 @@ class PaperRepository {
   Future<int> insertRevisionItem(RevisionItem item) async {
     final db = await _database.database;
     return await db.insert('revision_schedule', {
+      'question_id': item.questionId,
+      'next_review': item.nextReview.millisecondsSinceEpoch,
+      'interval_days': item.intervalDays,
+      'ease_factor': item.easeFactor,
+    });
+  }
+
+  /// Replaces any existing schedule for the question with [item].
+  Future<void> upsertRevisionItem(RevisionItem item) async {
+    final db = await _database.database;
+    await db.delete(
+      'revision_schedule',
+      where: 'question_id = ?',
+      whereArgs: [item.questionId],
+    );
+    await db.insert('revision_schedule', {
       'question_id': item.questionId,
       'next_review': item.nextReview.millisecondsSinceEpoch,
       'interval_days': item.intervalDays,

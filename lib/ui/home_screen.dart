@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../app.dart';
+import '../core/app_strings.dart';
 import '../data/models.dart';
 import '../services/document_reader.dart';
 import '../state/app_state.dart';
@@ -18,6 +19,7 @@ import 'create_mock_test_screen.dart';
 import 'analytics_screen.dart';
 import 'bookmarks_screen.dart';
 import 'revision_queue_screen.dart';
+import 'explanations_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -104,6 +106,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildDrawer(BuildContext context, AppState state) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final t = AppText.of(context);
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
@@ -142,7 +145,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 Text(
-                  'Question papers made simple',
+                  t.tagline,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: scheme.onPrimary.withValues(alpha: 0.85),
                   ),
@@ -152,13 +155,13 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           _DrawerItem(
             icon: Icons.home_rounded,
-            label: 'Home',
+            label: t.home,
             selected: true,
             onTap: () => Navigator.of(context).pop(),
           ),
           _DrawerItem(
             icon: Icons.calendar_today_rounded,
-            label: 'Calendar',
+            label: t.calendar,
             onTap: () {
               Navigator.of(context).pop();
               Navigator.of(context).push(
@@ -169,7 +172,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const Divider(height: 1),
           _DrawerItem(
             icon: Icons.school_rounded,
-            label: 'Syllabus Tracker',
+            label: t.syllabusTracker,
             onTap: () {
               Navigator.of(context).pop();
               Navigator.of(context).push(
@@ -179,7 +182,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           _DrawerItem(
             icon: Icons.history_rounded,
-            label: 'PYQ Explorer',
+            label: t.pyqExplorer,
             onTap: () {
               Navigator.of(context).pop();
               Navigator.of(context).push(
@@ -189,7 +192,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           _DrawerItem(
             icon: Icons.assignment_rounded,
-            label: 'Mock Tests',
+            label: t.mockTests,
             onTap: () {
               Navigator.of(context).pop();
               Navigator.of(context).push(
@@ -199,7 +202,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           _DrawerItem(
             icon: Icons.show_chart_rounded,
-            label: 'Analytics',
+            label: t.analytics,
             onTap: () {
               Navigator.of(context).pop();
               Navigator.of(context).push(
@@ -209,7 +212,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           _DrawerItem(
             icon: Icons.schedule_rounded,
-            label: 'Revision Queue',
+            label: t.revisionQueue,
             onTap: () {
               Navigator.of(context).pop();
               Navigator.of(context).push(
@@ -219,7 +222,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           _DrawerItem(
             icon: Icons.bookmark_rounded,
-            label: 'Bookmarks',
+            label: t.bookmarks,
             onTap: () {
               Navigator.of(context).pop();
               Navigator.of(context).push(
@@ -227,10 +230,20 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             },
           ),
+          _DrawerItem(
+            icon: Icons.chat_bubble_outline_rounded,
+            label: t.explanations,
+            onTap: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ExplanationsScreen()),
+              );
+            },
+          ),
           const Divider(height: 1),
           _DrawerItem(
             icon: Icons.person_rounded,
-            label: 'Profile',
+            label: t.profile,
             onTap: () {
               Navigator.of(context).pop();
               Navigator.of(context).push(
@@ -240,7 +253,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           _DrawerItem(
             icon: Icons.info_outline_rounded,
-            label: 'About & help',
+            label: t.aboutHelp,
             onTap: () {
               Navigator.of(context).pop();
               Navigator.of(context).push(

@@ -81,6 +81,7 @@ class StoredQuestion {
     required this.category,
     required this.difficulty,
     required this.importance,
+    this.correctOption,
     required this.isPyq,
     this.examYear,
     this.examName,
@@ -103,6 +104,7 @@ class StoredQuestion {
   final String category;
   final String difficulty;
   final String importance;
+  final String? correctOption;
   final bool isPyq;
   final int? examYear;
   final String? examName;
@@ -138,6 +140,8 @@ class StoredQuestion {
     String? category,
     String? difficulty,
     String? importance,
+    String? correctOption,
+    bool clearCorrectOption = false,
     bool? isPyq,
     int? examYear,
     String? examName,
@@ -159,6 +163,8 @@ class StoredQuestion {
       category: category ?? this.category,
       difficulty: difficulty ?? this.difficulty,
       importance: importance ?? this.importance,
+      correctOption:
+          clearCorrectOption ? null : (correctOption ?? this.correctOption),
       isPyq: isPyq ?? this.isPyq,
       examYear: examYear ?? this.examYear,
       examName: examName ?? this.examName,
@@ -199,6 +205,7 @@ class GeneratedQuestion {
     required this.needsReview,
     required this.pageNumber,
     required this.options,
+    this.correctOption,
     required this.sourceCategory,
     required this.generationBatch,
     required this.createdAt,
@@ -215,6 +222,7 @@ class GeneratedQuestion {
   final bool needsReview;
   final int pageNumber;
   final List<ParsedOption> options;
+  final String? correctOption;
   final String sourceCategory;
   final String generationBatch;
   final DateTime createdAt;
@@ -232,6 +240,8 @@ class GeneratedQuestion {
     bool? needsReview,
     int? pageNumber,
     List<ParsedOption>? options,
+    String? correctOption,
+    bool clearCorrectOption = false,
     String? sourceCategory,
     String? generationBatch,
     DateTime? createdAt,
@@ -248,6 +258,8 @@ class GeneratedQuestion {
       needsReview: needsReview ?? this.needsReview,
       pageNumber: pageNumber ?? this.pageNumber,
       options: options ?? this.options,
+      correctOption:
+          clearCorrectOption ? null : (correctOption ?? this.correctOption),
       sourceCategory: sourceCategory ?? this.sourceCategory,
       generationBatch: generationBatch ?? this.generationBatch,
       createdAt: createdAt ?? this.createdAt,
@@ -594,5 +606,64 @@ class RevisionItem {
       easeFactor: easeFactor ?? this.easeFactor,
     );
   }
+}
+
+/// A compact question record used by screens that join a helper table
+/// (explanations, bookmarks, revisions) with the `questions` table.
+class QuestionRef {
+  const QuestionRef({
+    required this.id,
+    required this.paperId,
+    required this.number,
+    required this.text,
+    required this.section,
+    required this.options,
+    required this.difficulty,
+    required this.importance,
+    required this.isPyq,
+    this.examYear,
+    this.examName,
+    this.marks,
+  });
+
+  final int id;
+  final int paperId;
+  final String number;
+  final String text;
+  final String section;
+  final List<ParsedOption> options;
+  final String difficulty;
+  final String importance;
+  final bool isPyq;
+  final int? examYear;
+  final String? examName;
+  final double? marks;
+}
+
+/// An explanation together with the question it belongs to.
+class ExplanationEntry {
+  const ExplanationEntry({
+    required this.explanation,
+    required this.question,
+  });
+
+  final QuestionExplanation explanation;
+  final QuestionRef question;
+}
+
+/// A bookmark together with the question it points at.
+class BookmarkEntry {
+  const BookmarkEntry({required this.bookmark, required this.question});
+
+  final Bookmark bookmark;
+  final QuestionRef question;
+}
+
+/// A revision item together with the question it points at.
+class RevisionEntry {
+  const RevisionEntry({required this.item, required this.question});
+
+  final RevisionItem item;
+  final QuestionRef question;
 }
 
