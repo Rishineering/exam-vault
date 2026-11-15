@@ -219,7 +219,7 @@ Example object:
       final request = await client.openUrl('POST', uri);
       request.headers.contentType = ContentType.json;
       request.headers.add('Authorization', 'Bearer $_apiKey');
-      request.headers.add('X-Requested-With', 'ExamVault');
+      request.headers.add('X-Requested-With', 'SetYourRank');
       request.add(utf8.encode(body));
 
       final response = await request.close();

@@ -138,7 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'ExamVault',
+                  'SetYourRank',
                   style: theme.textTheme.titleLarge?.copyWith(
                     color: scheme.onPrimary,
                     fontWeight: FontWeight.w800,
@@ -291,7 +291,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(width: 10),
-            const Text('ExamVault',
+            const Text('SetYourRank',
                 style: TextStyle(fontWeight: FontWeight.w700)),
           ],
         ),
@@ -895,7 +895,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              'Import a PDF or TXT file. ExamVault finds every numbered '
+              'Import a PDF or TXT file. SetYourRank finds every numbered '
               'question, marks, sections and multiple-choice options, then '
               'stores one question per row.',
               textAlign: TextAlign.center,

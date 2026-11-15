@@ -6,14 +6,14 @@ import 'ui/home_screen.dart';
 import 'ui/profile_setup_screen.dart';
 import 'ui/welcome_screen.dart';
 
-class ExamVaultApp extends StatefulWidget {
-  const ExamVaultApp({super.key});
+class SetYourRankApp extends StatefulWidget {
+  const SetYourRankApp({super.key});
 
   @override
-  State<ExamVaultApp> createState() => _ExamVaultAppState();
+  State<SetYourRankApp> createState() => _SetYourRankAppState();
 }
 
-class _ExamVaultAppState extends State<ExamVaultApp> {
+class _SetYourRankAppState extends State<SetYourRankApp> {
   late final AppState _state;
   bool _initialized = false;
   Widget _home = const WelcomeScreen();
@@ -60,7 +60,7 @@ class _ExamVaultAppState extends State<ExamVaultApp> {
     return AppScope(
       state: _state,
       child: MaterialApp(
-        title: 'ExamVault',
+        title: 'SetYourRank',
         debugShowCheckedModeBanner: false,
         themeMode: ThemeMode.system,
         theme: _buildTheme(seed, Brightness.light),

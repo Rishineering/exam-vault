@@ -73,7 +73,7 @@ class ExportService {
       ShareParams(
         files: [XFile(file.path, mimeType: 'text/csv')],
         subject: '${detail.paper.title} - extracted questions',
-        text: '${detail.questions.length} questions extracted by ExamVault.',
+        text: '${detail.questions.length} questions extracted by SetYourRank.',
       ),
     );
   }

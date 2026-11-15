@@ -78,7 +78,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'ExamVault',
+                            'SetYourRank',
                             style: theme.textTheme.titleLarge?.copyWith(
                               color: scheme.onPrimary,
                               fontWeight: FontWeight.w800,
@@ -179,7 +179,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const _InfoCard(
             icon: Icons.auto_awesome_rounded,
             title: 'How extraction works',
-            body: 'ExamVault reads the text layer of a digital PDF, keeps the '
+            body: 'SetYourRank reads the text layer of a digital PDF, keeps the '
                 'position of every line, removes repeated headers and footers, '
                 'then detects question numbers, sections, marks and '
                 'multiple-choice options with a rule-based parser. Scanned '
@@ -212,7 +212,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             icon: Icons.lock_outline_rounded,
             title: 'Privacy',
             body: 'All parsing, OCR and storage happen on this device. '
-                'ExamVault does not use an internet connection, accounts or '
+                'SetYourRank does not use an internet connection, accounts or '
                 'analytics. Your papers and extracted questions stay in the '
                 'app\'s private database until you delete them.',
           ),
@@ -227,7 +227,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 8),
           Center(
             child: Text(
-              'ExamVault ${SettingsScreen.version} • Offline-first',
+              'SetYourRank ${SettingsScreen.version} • Offline-first',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: scheme.onSurfaceVariant,
               ),

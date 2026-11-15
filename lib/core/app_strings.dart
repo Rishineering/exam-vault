@@ -31,7 +31,7 @@ class AppText {
   String pick(String english, String hindi) => isHindi ? hindi : english;
 
   // --- App shell -----------------------------------------------------------
-  String get appName => 'ExamVault';
+  String get appName => 'SetYourRank';
   String get tagline => pick('Question papers made simple', 'प्रश्नपत्र अब आसान');
   String get home => pick('Home', 'होम');
   String get calendar => pick('Calendar', 'कैलेंडर');

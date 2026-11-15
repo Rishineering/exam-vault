@@ -44,7 +44,7 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 32),
                   Text(
-                    'ExamVault',
+                    'SetYourRank',
                     style: theme.textTheme.headlineMedium?.copyWith(
                       color: scheme.onPrimary,
                       fontWeight: FontWeight.w800,

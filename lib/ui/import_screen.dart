@@ -164,7 +164,7 @@ class _ImportScreenState extends State<ImportScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'This looks like a scanned PDF, so ExamVault is '
+                        'This looks like a scanned PDF, so SetYourRank is '
                         'reading it with on-device OCR. This can take a minute.',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: scheme.onTertiaryContainer,

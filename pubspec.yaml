@@ -1,5 +1,5 @@
 name: exam_vault
-description: "ExamVault - extract exam questions from PDFs and text files into a structured database."
+description: "SetYourRank - previous-year exam paper analysis and question extraction for aspirants."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
